@@ -287,25 +287,16 @@ class WeChatBase
 
   /**
    * For weixin server validation
-   * @param bool $return 是否返回
+   * @return bool
    */
-  public function valid($return = false)
+  public function valid()
   {
-    $echoStr = isset($_GET["echostr"]) ? $_GET["echostr"] : '';
-    if ($return) {
-      if ($echoStr) {
-        if ($this->checkSignature()) return $echoStr;
-        else return false;
-      } else
-        return $this->checkSignature();
+    $echoStr = $_GET["echostr"] ?? '';
+    if ($echoStr && $this->checkSignature()) {
+      return $echoStr;
     } else {
-      if ($echoStr) {
-        if ($this->checkSignature()) die($echoStr);
-        else die('no access');
-      } else {
-        if ($this->checkSignature()) return true;
-        else die('no access');
-      }
+      if ($this->checkSignature()) return true;
+      else return 'no access';
     }
   }
 
@@ -628,9 +619,8 @@ class WeChatBase
    * @param bool $return 是否返回信息而不抛出到浏览器 默认:否
    * @return string
    * @throws \Exception
-   * @example $this->text('msg tips')->reply();
    */
-  public function reply($msg = array(), $return = false)
+  public function reply($msg = array())
   {
     if (empty($msg)) $msg = $this->_msg;
 
@@ -648,8 +638,7 @@ class WeChatBase
       }
     }
 
-    if ($return) return $xmldata;
-    else echo $xmldata;
+    return $xmldata;
   }
 
 
