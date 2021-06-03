@@ -47,7 +47,7 @@ class WeChatBase
     $this->encodingAesKey = $options['encodingAesKey'] ?? '';
     $this->appsecret = $options['appsecret'] ?? '';
 
-    $this->redis = new \Predis\Client($redis);
+    $this->redis = new \Predis\Client($redis['parameters'], $redis['options']);
   }
 
   /**

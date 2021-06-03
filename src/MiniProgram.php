@@ -25,7 +25,7 @@ class MiniProgram
   {
     $this->appid = $options['appid'] ?? '';
     $this->appsecret = $options['appsecret'] ?? '';
-    $this->redis = new \Predis\Client($redis);
+    $this->redis = new \Predis\Client($redis['parameters'], $redis['options']);
   }
 
   /**
