@@ -19,7 +19,11 @@
     "wanphp/installers": "*",
     "guzzlehttp/guzzle": "^7.1",
     "predis/predis": "^1.1.0",
-    "wechatpay/wechatpay-guzzle-middleware": "^0.2.1"
+    "wechatpay/wechatpay-guzzle-middleware": "^0.2.1",
+    "ext-openssl": "*",
+    "ext-dom": "*",
+    "ext-libxml": "*",
+    "ext-simplexml": "*"
   },
   "autoload": {
     "psr-4": {

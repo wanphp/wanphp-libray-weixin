@@ -29,16 +29,19 @@ trait HttpTrait
       $resp = $client->request($method, $uri, $options);
       $body = $resp->getBody()->getContents();
       if ($resp->getStatusCode() == 200) {
-        $json = json_decode($body, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-          if (isset($json['errcode']) && $json['errcode'] != 0) {
-            throw new \Exception($json['errcode'] . ' - ' . $json['errmsg'], 400);
-          } else {
-            return $json;
+        $content_type = $resp->getHeaderLine('Content-Type');
+        if (str_contains($content_type, 'application/json')) {
+          $json = json_decode($body, true);
+          if (json_last_error() === JSON_ERROR_NONE) {
+            if (isset($json['errcode']) && $json['errcode'] != 0) {
+              throw new \Exception($json['errcode'] . ' - ' . $json['errmsg'], 400);
+            } else {
+              return $json;
+            }
           }
-        } else {
+        }
+        if (str_contains($content_type, 'application/xml')) {
           $result = $this->fromXml($body);
-
           if ($result) {
             // 请求失败
             if (isset($result['return_code']) && $result['return_code'] === 'FAIL') {
@@ -49,10 +52,9 @@ trait HttpTrait
               throw new \Exception($result['err_code'] . ' - ' . $result['err_code_des'], 400);
             }
             return $result;
-          } else {
-            return ['content_type' => $resp->getHeaderLine('Content-Type'), 'body' => $body];
           }
         }
+        return ['content_type' => $content_type, 'content_disposition' => $resp->getHeaderLine('Content-disposition'), 'body' => $body];
       } else {
         throw new \Exception($resp->getReasonPhrase(), $resp->getStatusCode());
       }
@@ -96,11 +98,9 @@ trait HttpTrait
    * @param $xml
    * @return mixed
    */
-  public function fromXml($xml)
+  public function fromXml($xml): mixed
   {
     if (!$xml) return [];
-    // 禁止引用外部xml实体
-    if (\PHP_VERSION_ID < 80000) libxml_disable_entity_loader(true);
     return json_decode(json_encode(simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NOCDATA)), true);
   }
 }
