@@ -1150,9 +1150,7 @@ class WeChatBase
         "appId" => $this->appid,
         "nonceStr" => $nonceStr,
         "timestamp" => $timestamp,
-        "url" => $url,
-        "signature" => $signature,
-        "rawString" => $string
+        "signature" => $signature
       ];
     } else {
       return null;
@@ -1199,8 +1197,7 @@ class WeChatBase
    */
   private function httpGet($url, string $referer = ''): mixed
   {
-    if (strpos($url, '{ACCESS_TOKEN}') != false) {
-      if (!$this->access_token && !$this->checkAuth()) throw new Exception('ACCESS_TOKEN 无效', 400);
+    if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
     }
 
@@ -1217,8 +1214,7 @@ class WeChatBase
    */
   private function httpPost($url, $data): mixed
   {
-    if (strpos($url, '{ACCESS_TOKEN}') != false) {
-      if (!$this->access_token && !$this->checkAuth()) throw new Exception('ACCESS_TOKEN 无效', 400);
+    if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
     }
 
