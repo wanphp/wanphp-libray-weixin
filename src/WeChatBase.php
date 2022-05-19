@@ -326,7 +326,7 @@ class WeChatBase
    */
   public function getRev(): static
   {
-    if ($this->_receive) return $this;
+    if (!empty($this->_receive)) return $this;
     $postStr = file_get_contents("php://input");
 
     if (!empty($postStr)) {
@@ -635,10 +635,10 @@ class WeChatBase
 
   /**
    * 通用auth验证方法，保存到redis
-   * @return bool
+   * @return string
    * @throws Exception
    */
-  public function checkAuth(): bool
+  public function checkAuth(): string
   {
     //数据库取缓存
     $access_token = $this->redis->get('weixin_access_token');
@@ -654,7 +654,7 @@ class WeChatBase
       return $result['access_token'];
     }
 
-    return false;
+    return '';
   }
 
   /**
@@ -1169,10 +1169,10 @@ class WeChatBase
 
   /**
    * 获取 ticket
-   * @return bool
+   * @return string
    * @throws Exception
    */
-  private function getJsApiTicket(): bool
+  private function getJsApiTicket(): string
   {
     $jsapi_ticket = $this->redis->get('weixin_jsapi_ticket');
     if ($jsapi_ticket) {
@@ -1186,7 +1186,7 @@ class WeChatBase
       $this->jsapi_ticket = $result['ticket'];
       return $result['ticket'];
     }
-    return false;
+    return '';
   }
 
   /**
