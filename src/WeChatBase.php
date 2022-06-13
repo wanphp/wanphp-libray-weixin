@@ -10,9 +10,11 @@
 namespace Wanphp\Libray\Weixin;
 
 
+use DOMDocument;
 use Exception;
 use GuzzleHttp\Client;
-use Psr\Http\Message\StreamInterface;
+use JetBrains\PhpStorm\ArrayShape;
+use Predis\ClientInterface;
 
 class WeChatBase
 {
@@ -27,7 +29,7 @@ class WeChatBase
   private array $_msg;
   private bool $func_flag = false;
   private array $_receive;
-  private \Predis\Client $redis;
+  private ClientInterface $redis;
 
   public static int $OK = 0;
   public static int $ValidateSignatureError = -40001;//签名验证错误
@@ -63,7 +65,7 @@ class WeChatBase
       sort($array, SORT_STRING);//排序
       $str = implode($array);
       return array(self::$OK, sha1($str));
-    } catch (Exception $e) {
+    } catch (Exception) {
       return array(self::$ComputeSignatureError, null);
     }
   }
@@ -110,14 +112,14 @@ class WeChatBase
   public function xmlExtract(string $xml_str): array
   {
     try {
-      $xml = new \DOMDocument();
+      $xml = new DOMDocument();
       $xml->loadXML($xml_str);
       $array_e = $xml->getElementsByTagName('Encrypt');
       $array_a = $xml->getElementsByTagName('ToUserName');
       $encrypt = $array_e->item(0)->nodeValue;
       $username = $array_a->item(0)->nodeValue;
       return array(0, $encrypt, $username);
-    } catch (Exception $e) {
+    } catch (Exception) {
       return array(self::$ParseXmlError, null, null);
     }
   }
@@ -179,7 +181,7 @@ class WeChatBase
       //生成发送的xml
       $encryptMsg = $this->xmlGenerate($encrypt, $signature, $timeStamp, $nonce);
       return self::$OK;
-    } catch (Exception $e) {
+    } catch (Exception) {
       return self::$EncryptAESError;
     }
   }
@@ -233,7 +235,7 @@ class WeChatBase
       $key = base64_decode($this->encodingAesKey . "=");
       $iv = substr($key, 0, 16);
       $decrypted = openssl_decrypt($encrypt, 'AES-256-CBC', substr($key, 0, 32), OPENSSL_ZERO_PADDING, $iv);
-    } catch (Exception $e) {
+    } catch (Exception) {
       return self::$DecryptAESError;
     }
     try {
@@ -249,7 +251,7 @@ class WeChatBase
       $from_appid = substr($content, $xml_len + 4);
       if (!$this->appid) $this->appid = $from_appid;
       //如果传入的appid是空的，则认为是订阅号，使用数据中提取出来的appid
-    } catch (Exception $e) {
+    } catch (Exception) {
       return self::$IllegalBuffer;
     }
     if ($from_appid != $this->appid) return self::$ValidateAppidError;//避免传入appid是错误的情况
@@ -282,7 +284,7 @@ class WeChatBase
 
   /**
    * For weixin server validation
-   * @return bool
+   * @return bool|string
    */
   public function valid(): bool|string
   {
@@ -404,7 +406,7 @@ class WeChatBase
   {
     if (isset($this->_receive['Content']))
       return $this->_receive['Content'];
-    else if (isset($this->_receive['Recognition'])) //获取语音识别文字内容，需申请开通
+    elseif (isset($this->_receive['Recognition'])) //获取语音识别文字内容，需申请开通
       return $this->_receive['Recognition'];
     else
       return false;
@@ -533,7 +535,6 @@ class WeChatBase
    */
   public function service(): static
   {
-    $FuncFlag = $this->func_flag ? 1 : 0;
     $msg = array(
       'ToUserName' => $this->getRevFrom(),
       'FromUserName' => $this->getRevTo(),
@@ -660,10 +661,10 @@ class WeChatBase
   /**
    * 创建菜单
    * @param array $data 菜单数组数据
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function createMenu(array $data): StreamInterface|bool|array
+  public function createMenu(array $data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/menu/create?{ACCESS_TOKEN}', $data);
   }
@@ -671,10 +672,10 @@ class WeChatBase
   /**
    * 创建个性化菜单
    * @param array $data 菜单数组数据
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  public function addConditional(array $data): mixed
+  public function addConditional(array $data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/menu/addconditional?{ACCESS_TOKEN}', $data);
   }
@@ -682,30 +683,30 @@ class WeChatBase
   /**
    * 删除个性化菜单
    * @param array $data = array("menuid" => "208379533");
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  public function delConditional(array $data): mixed
+  public function delConditional(array $data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/menu/delconditional?{ACCESS_TOKEN}', $data);
   }
 
   /**
    * 获取菜单
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  public function getMenu(): mixed
+  public function getMenu(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/menu/get?{ACCESS_TOKEN}');
   }
 
   /**
    * 删除菜单
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  public function deleteMenu(): mixed
+  public function deleteMenu(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/menu/delete?{ACCESS_TOKEN}');
   }
@@ -713,10 +714,10 @@ class WeChatBase
   /**
    * 根据媒体文件ID获取媒体文件
    * @param string $media_id 媒体文件id
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  public function getMedia(string $media_id): mixed
+  public function getMedia(string $media_id): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/media/get?{ACCESS_TOKEN}&media_id=' . $media_id);
   }
@@ -728,7 +729,7 @@ class WeChatBase
    * @return array
    * @throws Exception
    */
-  function getDownloadFile(string $media_id, string $path): array
+  #[ArrayShape(['type' => "mixed", 'file' => "string"])] function getDownloadFile(string $media_id, string $path): array
   {
     $url = 'https://api.weixin.qq.com/cgi-bin/media/get?{ACCESS_TOKEN}&media_id=' . $media_id;
     $save_path = rtrim($path, '/');
@@ -768,10 +769,10 @@ class WeChatBase
    * @param int $scene_id 自定义追踪id
    * @param int $type 二维码类型，永久二维码(此时expire参数无效)
    * @param int $expire 临时二维码有效期，最大为2592000秒（30天）
-   * @return StreamInterface|bool|array array('ticket'=>'qrcode字串','expire_seconds'=>1800)
+   * @return array array('ticket'=>'qrcode字串','expire_seconds'=>1800)
    * @throws Exception
    */
-  public function getQRCode(int $scene_id, int $type = 0, int $expire = 1800): StreamInterface|bool|array
+  public function getQRCode(int $scene_id, int $type = 0, int $expire = 1800): array
   {
     switch ($type) {
       case 1:
@@ -810,10 +811,10 @@ class WeChatBase
    * 识别二维码
    * $image = file_get_contents($image_path);
    * @param $data = array('img' => base64_encode($image));
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function identifyQRCode($data): StreamInterface|bool|array
+  public function identifyQRCode($data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $data);
   }
@@ -822,10 +823,10 @@ class WeChatBase
    * 识别行驶语
    * $image = file_get_contents($image_path);
    * @param $data = array('img' => base64_encode($image));
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function identifyDriving($data): StreamInterface|bool|array
+  public function identifyDriving($data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cv/ocr/driving?{ACCESS_TOKEN}', $data);
   }
@@ -834,10 +835,10 @@ class WeChatBase
    * 识别驾驶语
    * $image = file_get_contents($image_path);
    * @param $data = array('img' => base64_encode($image));
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function identifyIDCard($data): StreamInterface|bool|array
+  public function identifyIDCard($data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cv/ocr/idcard?{ACCESS_TOKEN}', $data);
   }
@@ -845,10 +846,10 @@ class WeChatBase
   /**
    * 批量获取关注用户列表
    * @param string $next_openid
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getUserList(string $next_openid = ''): StreamInterface|bool|array
+  public function getUserList(string $next_openid = ''): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/user/get?{ACCESS_TOKEN}&next_openid=' . $next_openid);
   }
@@ -856,10 +857,10 @@ class WeChatBase
   /**
    * 获取关注者详细信息
    * @param string $openid
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getUserInfo(string $openid): StreamInterface|bool|array
+  public function getUserInfo(string $openid): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/user/info?{ACCESS_TOKEN}&openid=' . $openid);
   }
@@ -867,20 +868,20 @@ class WeChatBase
   /**
    * 批量获取用户基本信息
    * @param array $openid
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getUserListInfo(array $openid): StreamInterface|bool|array
+  public function getUserListInfo(array $openid): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/user/info/batchget?{ACCESS_TOKEN}', ['user_list' => $openid]);
   }
 
   /**
    * 获取公众号已创建的标签
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getTags(): StreamInterface|bool|array
+  public function getTags(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/tags/get?{ACCESS_TOKEN}');
   }
@@ -888,10 +889,10 @@ class WeChatBase
   /**
    * 创建标签
    * @param string $name 标签名称
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function createTag(string $name): StreamInterface|bool|array
+  public function createTag(string $name): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/create?{ACCESS_TOKEN}', ['tag' => ['name' => $name]]);
   }
@@ -900,10 +901,10 @@ class WeChatBase
    * 编辑标签
    * @param int $id 标签id
    * @param string $name 标签名称
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function updateTag(int $id, string $name): StreamInterface|bool|array
+  public function updateTag(int $id, string $name): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/update?{ACCESS_TOKEN}', ['tag' => ['id' => $id, 'name' => $name]]);
   }
@@ -911,10 +912,10 @@ class WeChatBase
   /**
    * 删除标签
    * @param int $id 标签id
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function deleteTag(int $id): StreamInterface|bool|array
+  public function deleteTag(int $id): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/delete?{ACCESS_TOKEN}', ['tag' => ['id' => $id]]);
   }
@@ -923,10 +924,10 @@ class WeChatBase
    * 批量为用户打标签
    * @param int $tagId 标签id
    * @param array $openid 用户openid数组
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function membersTagging(int $tagId, array $openid): StreamInterface|bool|array
+  public function membersTagging(int $tagId, array $openid): array
   {
     $data = ['openid_list' => $openid, 'tagid' => $tagId];
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/members/batchtagging?{ACCESS_TOKEN}', $data);
@@ -936,10 +937,10 @@ class WeChatBase
    * 批量为用户取消标签
    * @param $tagId
    * @param $openid
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function membersUnTagging($tagId, $openid): StreamInterface|bool|array
+  public function membersUnTagging($tagId, $openid): array
   {
     $data = ['openid_list' => $openid, 'tagid' => $tagId];
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/members/batchuntagging?{ACCESS_TOKEN}', $data);
@@ -948,10 +949,10 @@ class WeChatBase
   /**
    * 获取用户身上的标签列表
    * @param $openid
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function memberGetidlist($openid): StreamInterface|bool|array
+  public function memberGetidlist($openid): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/tags/getidlist?{ACCESS_TOKEN}', ['openid' => $openid]);
   }
@@ -960,10 +961,10 @@ class WeChatBase
    * 修改用户备注
    * @param $openid
    * @param $remark
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function updateUserRemark($openid, $remark): StreamInterface|bool|array
+  public function updateUserRemark($openid, $remark): array
   {
     $data = ['openid' => $openid, 'remark' => $remark];
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/user/info/updateremark?{ACCESS_TOKEN}', $data);
@@ -972,10 +973,10 @@ class WeChatBase
   /**
    * 发送客服消息
    * @param array $data 消息结构{"touser":"OPENID","msgtype":"news","news":{...}}
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function sendCustomMessage(array $data): StreamInterface|bool|array
+  public function sendCustomMessage(array $data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/message/custom/send?{ACCESS_TOKEN}', $data);
   }
@@ -983,20 +984,20 @@ class WeChatBase
   /**
    * 发送客服消息
    * @param array $data 消息结构{"touser":"OPENID","template_id":"模板ID","url":"模板跳转链接","data":{...}}
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function sendTemplateMessage(array $data): StreamInterface|bool|array
+  public function sendTemplateMessage(array $data): array
   {
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/message/template/send?{ACCESS_TOKEN}', $data);
   }
 
   /**
    * 添加消息模板设置的行业信息
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getIndustry(): StreamInterface|bool|array
+  public function getIndustry(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/template/get_industry?{ACCESS_TOKEN}');
   }
@@ -1004,10 +1005,10 @@ class WeChatBase
   /**
    * 添加消息模板
    * @param $id
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function addTemplateMessage($id): StreamInterface|bool|array
+  public function addTemplateMessage($id): array
   {
     $data = array('template_id_short' => $id);
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/template/api_add_template?{ACCESS_TOKEN}', $data);
@@ -1016,10 +1017,10 @@ class WeChatBase
   /**
    * 删除消息模板
    * @param $id
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function delTemplateMessage($id): StreamInterface|bool|array
+  public function delTemplateMessage($id): array
   {
     $data = array('template_id' => $id);
     return $this->httpPost('https://api.weixin.qq.com/cgi-bin/template/del_private_template?{ACCESS_TOKEN}', $data);
@@ -1027,30 +1028,30 @@ class WeChatBase
 
   /**
    * 获取消息模板
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function templateMessage(): StreamInterface|bool|array
+  public function templateMessage(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/template/get_all_private_template?{ACCESS_TOKEN}');
   }
 
   /**
    * 获取客服基本信息
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getKFList(): StreamInterface|bool|array
+  public function getKFList(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/customservice/getkflist?{ACCESS_TOKEN}');
   }
 
   /**
    * 获取在线客服基本信息
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getOnlineKFList(): StreamInterface|bool|array
+  public function getOnlineKFList(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/customservice/getonlinekflist?{ACCESS_TOKEN}');
   }
@@ -1058,10 +1059,10 @@ class WeChatBase
   /**
    * 获取未接入会话列表
    * /**
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getWaitCase(): StreamInterface|bool|array
+  public function getWaitCase(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/customservice/kfsession/getwaitcase?{ACCESS_TOKEN}');
   }
@@ -1070,9 +1071,11 @@ class WeChatBase
    * 第一步：用户同意授权，获取code
    * oauth 授权跳转接口
    * @param string $callback 回调URI
+   * @param string $state
+   * @param string $scope
    * @return string
    */
-  public function getOauthRedirect(string $callback, $state = '', $scope = 'snsapi_userinfo'): string
+  public function getOauthRedirect(string $callback, string $state = '', string $scope = 'snsapi_userinfo'): string
   {
     return 'https://open.weixin.qq.com/connect/oauth2/authorize?appid=' . $this->appid . '&redirect_uri=' . urlencode($callback) . '&response_type=code&scope=' . $scope . '&state=' . $state . '#wechat_redirect';
   }
@@ -1080,19 +1083,15 @@ class WeChatBase
   /**
    * 第二步：通过code换取网页授权access_token
    * 通过code获取Access Token
-   * @return StreamInterface|bool|array
+   * @return array
    * @throws Exception
    */
-  public function getOauthAccessToken(): StreamInterface|bool|array
+  public function getOauthAccessToken(): array
   {
     $code = $_GET['code'] ?? '';
-    if (!$code) return false;
+    if (!$code) throw new Exception('无code！');
     $url = 'https://api.weixin.qq.com/sns/oauth2/access_token?appid=' . $this->appid . '&secret=' . $this->app_secret . '&code=' . $code . '&grant_type=authorization_code';
-    $result = $this->httpGet($url);
-    if ($result) {
-      return $result;
-    }
-    return false;
+    return $this->httpGet($url);
   }
 
   /**
@@ -1100,10 +1099,10 @@ class WeChatBase
    * 获取授权后的用户资料
    * @param string $access_token
    * @param string $openid
-   * @return bool|mixed {openid,nickname,sex,province,city,country,headimgurl,privilege}
+   * @return array {openid,nickname,sex,province,city,country,headimgurl,privilege}
    * @throws Exception
    */
-  public function getOauthUserinfo(string $access_token, string $openid): mixed
+  public function getOauthUserinfo(string $access_token, string $openid): array
   {
     return $this->httpGet('https://api.weixin.qq.com/sns/userinfo?access_token=' . $access_token . '&openid=' . $openid);
   }
@@ -1135,7 +1134,7 @@ class WeChatBase
       if ($url == '') {
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
         $url = $_SERVER['REQUEST_URI'];
-        $url = "{$protocol}{$_SERVER['HTTP_HOST']}{$url}";
+        $url = "$protocol{$_SERVER['HTTP_HOST']}$url";
       }
 
       $timestamp = time();
@@ -1192,10 +1191,10 @@ class WeChatBase
   /**
    * @param $url
    * @param string $referer
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  private function httpGet($url, string $referer = ''): mixed
+  private function httpGet($url, string $referer = ''): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
@@ -1209,10 +1208,10 @@ class WeChatBase
   /**
    * @param $url
    * @param $data
-   * @return array|mixed
+   * @return array
    * @throws Exception
    */
-  private function httpPost($url, $data): mixed
+  private function httpPost($url, $data): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);

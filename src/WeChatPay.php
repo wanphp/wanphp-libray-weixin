@@ -10,6 +10,7 @@
 namespace Wanphp\Libray\Weixin;
 
 
+use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
 use WechatPay\GuzzleMiddleware\Util\PemUtil;
@@ -19,8 +20,8 @@ class WeChatPay
 {
   use HttpTrait;
 
-  private $client;
-  private $mchid;
+  private Client $client;
+  private string $mchid;
 
   public function __construct($config)
   {
@@ -46,7 +47,7 @@ class WeChatPay
    * APP下单API
    * @param array $data
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function app(array $data): array
   {
@@ -57,7 +58,7 @@ class WeChatPay
    * JSAPI/小程序下单
    * @param array $data
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function jsapi(array $data): array
   {
@@ -68,7 +69,7 @@ class WeChatPay
    * Native下单
    * @param array $data
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function native(array $data): array
   {
@@ -79,7 +80,7 @@ class WeChatPay
    * H5下单
    * @param array $data
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function h5(array $data): array
   {
@@ -90,7 +91,7 @@ class WeChatPay
    * 微信支付订单号查询订单
    * @param string $id
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function findById(string $id): array
   {
@@ -101,7 +102,7 @@ class WeChatPay
    * 商户订单号查询订单
    * @param string $out_trade_no
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function findByOutTradeNo(string $out_trade_no): array
   {
@@ -112,19 +113,19 @@ class WeChatPay
    * 关单
    * @param string $out_trade_no
    * @return array
-   * @throws \Exception
+   * @throws Exception
    */
   public function close(string $out_trade_no): array
   {
-    return $this->httpPost("out-trade-no/{$out_trade_no}/close", ['mchid' => $this->mchid]);
+    return $this->httpPost("out-trade-no/$out_trade_no/close", ['mchid' => $this->mchid]);
   }
 
   /**
    * @param $url
-   * @return mixed
-   * @throws \Exception
+   * @return array
+   * @throws Exception
    */
-  private function httpGet($url)
+  private function httpGet($url): array
   {
     return $this->request($this->client, 'GET', $url, ['headers' => ['Accept' => 'application/json']]);
   }
@@ -132,10 +133,10 @@ class WeChatPay
   /**
    * @param $url
    * @param $data
-   * @return mixed
-   * @throws \Exception
+   * @return array
+   * @throws Exception
    */
-  private function httpPost($url, $data)
+  private function httpPost($url, $data): array
   {
     return $this->request($this->client, 'POST', $url, ['json' => $data, 'headers' => ['Accept' => 'application/json']]);
   }

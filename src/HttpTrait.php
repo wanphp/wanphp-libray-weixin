@@ -9,6 +9,7 @@
 namespace Wanphp\Libray\Weixin;
 
 
+use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
@@ -20,10 +21,10 @@ trait HttpTrait
    * @param string $method
    * @param string $uri
    * @param array $options
-   * @return array|mixed
-   * @throws \Exception
+   * @return array
+   * @throws Exception
    */
-  private function request(Client $client, string $method, $uri = '', array $options = [])
+  private function request(Client $client, string $method, string $uri = '', array $options = []): array
   {
     try {
       $resp = $client->request($method, $uri, $options);
@@ -34,7 +35,7 @@ trait HttpTrait
           $json = json_decode($body, true);
           if (json_last_error() === JSON_ERROR_NONE) {
             if (isset($json['errcode']) && $json['errcode'] != 0) {
-              throw new \Exception($json['errcode'] . ' - ' . $json['errmsg'], 400);
+              throw new Exception($json['errcode'] . ' - ' . $json['errmsg'], 400);
             } else {
               return $json;
             }
@@ -45,18 +46,18 @@ trait HttpTrait
           if ($result) {
             // 请求失败
             if (isset($result['return_code']) && $result['return_code'] === 'FAIL') {
-              throw new \Exception('FAIL - ' . $result['return_msg'], 400);
+              throw new Exception('FAIL - ' . $result['return_msg'], 400);
             }
 
             if (isset($result['result_code']) && $result['result_code'] === 'FAIL') {
-              throw new \Exception($result['err_code'] . ' - ' . $result['err_code_des'], 400);
+              throw new Exception($result['err_code'] . ' - ' . $result['err_code_des'], 400);
             }
             return $result;
           }
         }
         return ['content_type' => $content_type, 'content_disposition' => $resp->getHeaderLine('Content-disposition'), 'body' => $body];
       } else {
-        throw new \Exception($resp->getReasonPhrase(), $resp->getStatusCode());
+        throw new Exception($resp->getReasonPhrase(), $resp->getStatusCode());
       }
     } catch (RequestException $e) {
       $message = $e->getMessage();
@@ -64,9 +65,9 @@ trait HttpTrait
         $message .= "\n" . $e->getResponse()->getStatusCode() . ' ' . $e->getResponse()->getReasonPhrase();
         $message .= "\n" . $e->getResponse()->getBody();
       }
-      throw new \Exception($message);
+      throw new Exception($message);
     } catch (GuzzleException $e) {
-      throw new \Exception($e->getMessage(), $e->getCode());
+      throw new Exception($e->getMessage(), $e->getCode());
     }
   }
 
@@ -76,13 +77,13 @@ trait HttpTrait
   }
 
   /**
-   * @param $datas
+   * @param $data
    * @return string
    */
-  public function toXml($datas)
+  public function toXml($data): string
   {
     $xml = "<xml>";
-    foreach ($datas as $key => $val) {
+    foreach ($data as $key => $val) {
       if (is_numeric($val)) {
         $xml .= "<" . $key . ">" . $val . "</" . $key . ">";
       } else {
@@ -96,9 +97,9 @@ trait HttpTrait
   /**
    * 将xml转为array
    * @param $xml
-   * @return mixed
+   * @return array
    */
-  public function fromXml($xml): mixed
+  public function fromXml($xml): array
   {
     if (!$xml) return [];
     return json_decode(json_encode(simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NOCDATA)), true);

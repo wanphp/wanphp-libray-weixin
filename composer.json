@@ -1,7 +1,7 @@
 {
   "name": "wanphp/libray-weixin",
   "type": "wanphp-libray",
-  "description": "wanphp 微信接口",
+  "description": "微信开发常用操作接口",
   "keywords": [
     "Weixin",
     "MiniProgram",
