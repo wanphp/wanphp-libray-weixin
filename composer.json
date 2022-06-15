@@ -17,6 +17,7 @@
   ],
   "require": {
     "wanphp/installers": "*",
+    "wanphp/libray-mysql": "^1.1.0",
     "guzzlehttp/guzzle": "^7.1",
     "predis/predis": "^1.1.0",
     "wechatpay/wechatpay-guzzle-middleware": "^0.2.1",
@@ -28,6 +29,12 @@
   "autoload": {
     "psr-4": {
       "Wanphp\\Libray\\Weixin\\": "/src"
+    }
+  },
+  "repositories": {
+    "packagist": {
+      "type": "composer",
+      "url": "https://mirrors.aliyun.com/composer/"
     }
   }
 }
