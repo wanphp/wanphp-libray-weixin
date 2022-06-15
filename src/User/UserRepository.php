@@ -19,7 +19,7 @@ class UserRepository extends BaseRepository implements UserInterface
     parent::__construct($database, self::TABLE_NAME, UserEntity::class);
   }
 
-  public function getUser($id): bool|array
+  public function getUser($id): array
   {
     return $this->db->select(UserInterface::TABLE_NAME . '(u)', [
       '[>]' . PublicInterface::TABLE_NAME . '(p)' => ["u.id" => "id"]
