@@ -13,6 +13,7 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use Predis\ClientInterface;
+use Wanphp\Libray\Slim\Setting;
 
 class MiniProgram
 {
@@ -23,8 +24,10 @@ class MiniProgram
   private string $access_token;
   private ClientInterface $redis;
 
-  public function __construct($options, $redis)
+  public function __construct(Setting $setting)
   {
+    $options = $setting->get('wechat.miniprogram');
+    $redis = $setting->get('redis');
     $this->appid = $options['appid'] ?? '';
     $this->appSecret = $options['appsecret'] ?? '';
     $this->redis = new \Predis\Client($redis['parameters'], $redis['options']);

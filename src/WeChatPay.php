@@ -13,6 +13,7 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
+use Wanphp\Libray\Slim\Setting;
 use WechatPay\GuzzleMiddleware\Util\PemUtil;
 use WechatPay\GuzzleMiddleware\WechatPayMiddleware;
 
@@ -23,8 +24,9 @@ class WeChatPay
   private Client $client;
   private string $mchid;
 
-  public function __construct($config)
+  public function __construct(Setting $setting)
   {
+    $config = $setting->get('wechat.pay-v3');
     if ($config['merchantId'] != '' && $config['merchantSerialNumber'] != '' && $config['pathToPrivateKey'] != '' && $config['pathToCertificate'] != '') {
       $merchantPrivateKey = PemUtil::loadPrivateKey($config['pathToPrivateKey']); // 商户私钥
       $wechatpayCertificate = PemUtil::loadCertificate($config['pathToCertificate']); // 微信支付平台证书

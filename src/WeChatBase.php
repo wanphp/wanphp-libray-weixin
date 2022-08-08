@@ -15,6 +15,7 @@ use Exception;
 use GuzzleHttp\Client;
 use JetBrains\PhpStorm\ArrayShape;
 use Predis\ClientInterface;
+use Wanphp\Libray\Slim\Setting;
 
 class WeChatBase
 {
@@ -41,8 +42,10 @@ class WeChatBase
   public static int $DecryptAESError = -40007;//aes 解密失败
   public static int $IllegalBuffer = -40008;//解密后得到的buffer非法
 
-  public function __construct($options, $redis)
+  public function __construct(Setting $setting)
   {
+    $options = $setting->get('wechat.base');
+    $redis = $setting->get('redis');
     $this->token = $options['token'] ?? '';
     $this->appid = $options['appid'] ?? '';
     $this->encodingAesKey = $options['encodingAesKey'] ?? '';

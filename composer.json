@@ -19,6 +19,7 @@
     "wanphp/installers": "*",
     "guzzlehttp/guzzle": "^7.1",
     "predis/predis": "^1.1.0",
+    "wanphp/libray-slim": "^1.0.0",
     "wechatpay/wechatpay-guzzle-middleware": "^0.2.1",
     "ext-openssl": "*",
     "ext-dom": "*",

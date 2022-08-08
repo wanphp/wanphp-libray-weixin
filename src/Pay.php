@@ -12,6 +12,7 @@ namespace Wanphp\Libray\Weixin;
 
 use Exception;
 use GuzzleHttp\Client;
+use Wanphp\Libray\Slim\Setting;
 
 class Pay
 {
@@ -24,8 +25,9 @@ class Pay
   private string $sslCertPath;//商户证书路径
   private string $sslKeyPath;//证书密钥
 
-  public function __construct($config)
+  public function __construct(Setting $setting)
   {
+    $config = $setting->get('wechat.pay-v2');
     $this->appid = $config['appid'] ?? '';
     $this->mchid = $config['mchid'] ?? '';
     $this->appSecret = $config['appSecret'] ?? '';
