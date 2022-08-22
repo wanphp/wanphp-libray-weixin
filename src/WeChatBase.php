@@ -15,6 +15,7 @@ use Exception;
 use GuzzleHttp\Client;
 use JetBrains\PhpStorm\ArrayShape;
 use Predis\ClientInterface;
+use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
 
 class WeChatBase

@@ -13,6 +13,7 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
+use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
 use WechatPay\GuzzleMiddleware\Util\PemUtil;
 use WechatPay\GuzzleMiddleware\WechatPayMiddleware;

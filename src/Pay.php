@@ -12,6 +12,7 @@ namespace Wanphp\Libray\Weixin;
 
 use Exception;
 use GuzzleHttp\Client;
+use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
 
 class Pay
