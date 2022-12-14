@@ -29,7 +29,6 @@ class WeChatBase
   private string $access_token;
   private string $jsapi_ticket;
   private array $_msg;
-  private bool $func_flag = false;
   private array $_receive;
   private ClientInterface $redis;
 
@@ -303,24 +302,14 @@ class WeChatBase
 
   /**
    * 设置发送消息
-   * @param array|string $msg 消息数组
+   * @param array $msg 消息数组
    * @param bool $append 是否在原消息数组追加
    */
-  public function Message(array|string $msg = '', bool $append = false): array|string
+  public function Message(array $msg = [], bool $append = false): array|string
   {
-    if (is_null($msg)) {
-      $this->_msg = array();
-    } elseif (is_array($msg)) {
-      if ($append) $this->_msg = array_merge($this->_msg, $msg);
-      else $this->_msg = $msg;
-    }
+    if ($append) $this->_msg = array_merge($this->_msg, $msg);
+    else $this->_msg = $msg;
     return $this->_msg;
-  }
-
-  public function setFuncFlag($flag): static
-  {
-    $this->func_flag = $flag;
-    return $this;
   }
 
   /**
@@ -520,14 +509,12 @@ class WeChatBase
    */
   public function text(string $text = ''): static
   {
-    $FuncFlag = $this->func_flag ? 1 : 0;
     $msg = array(
       'ToUserName' => $this->getRevFrom(),
       'FromUserName' => $this->getRevTo(),
       'MsgType' => 'text',
       'Content' => $text,
-      'CreateTime' => time(),
-      'FuncFlag' => $FuncFlag
+      'CreateTime' => time()
     );
     $this->Message($msg);
     return $this;
@@ -559,7 +546,6 @@ class WeChatBase
    */
   public function music(string $title, string $desc, string $musicUrl, string $hgMusicUrl = ''): static
   {
-    $FuncFlag = $this->func_flag ? 1 : 0;
     $msg = array(
       'ToUserName' => $this->getRevFrom(),
       'FromUserName' => $this->getRevTo(),
@@ -570,8 +556,7 @@ class WeChatBase
         'Description' => $desc,
         'MusicUrl' => $musicUrl,
         'HQMusicUrl' => $hgMusicUrl
-      ),
-      'FuncFlag' => $FuncFlag
+      )
     );
     $this->Message($msg);
     return $this;
@@ -593,7 +578,6 @@ class WeChatBase
    */
   public function news(array $newsData = array()): static
   {
-    $FuncFlag = $this->func_flag ? 1 : 0;
     $count = count($newsData);
 
     $msg = array(
@@ -602,8 +586,7 @@ class WeChatBase
       'MsgType' => 'news',
       'CreateTime' => time(),
       'ArticleCount' => $count,
-      'Articles' => $newsData,
-      'FuncFlag' => $FuncFlag
+      'Articles' => $newsData
     );
     $this->Message($msg);
     return $this;
@@ -770,13 +753,13 @@ class WeChatBase
 
   /**
    * 创建二维码ticket
-   * @param int $scene_id 自定义追踪id
+   * @param string $scene_id 自定义追踪id
    * @param int $type 二维码类型，永久二维码(此时expire参数无效)
    * @param int $expire 临时二维码有效期，最大为2592000秒（30天）
    * @return array array('ticket'=>'qrcode字串','expire_seconds'=>1800)
    * @throws Exception
    */
-  public function getQRCode(int $scene_id, int $type = 0, int $expire = 1800): array
+  public function getQRCode(string $scene_id, int $type = 0, int $expire = 1800): array
   {
     switch ($type) {
       case 1:
