@@ -31,6 +31,7 @@ class WeChatBase
   private array $_msg;
   private array $_receive;
   private ClientInterface $redis;
+  private array $queryParams;
 
   public static int $OK = 0;
   public static int $ValidateSignatureError = -40001;//签名验证错误
@@ -268,9 +269,9 @@ class WeChatBase
    */
   private function checkSignature(): bool
   {
-    $signature = $_GET["signature"] ?? '';
-    $timestamp = $_GET["timestamp"] ?? '';
-    $nonce = $_GET["nonce"] ?? '';
+    $signature = $this->queryParams["signature"] ?? '';
+    $timestamp = $this->queryParams["timestamp"] ?? '';
+    $nonce = $this->queryParams["nonce"] ?? '';
 
     $token = $this->token;
     $tmpArr = array($token, $timestamp, $nonce);
@@ -287,11 +288,13 @@ class WeChatBase
 
   /**
    * For weixin server validation
+   * @param array $queryParams
    * @return bool|string
    */
-  public function valid(): bool|string
+  public function valid(array $queryParams): bool|string
   {
-    $echoStr = $_GET["echostr"] ?? '';
+    $this->queryParams = $queryParams;
+    $echoStr = $queryParams["echostr"] ?? '';
     if ($echoStr && $this->checkSignature()) {
       return $echoStr;
     } else {
@@ -328,9 +331,9 @@ class WeChatBase
 
       if ($this->encodingAesKey) {//安全模式
         $msg = '';
-        $msg_signature = $_GET['msg_signature'] ?? '';
-        $timestamp = $_GET['timestamp'] ?? time();
-        $nonce = $_GET['nonce'] ?? '';
+        $msg_signature = $this->queryParams['msg_signature'] ?? '';
+        $timestamp = $this->queryParams['timestamp'] ?? time();
+        $nonce = $this->queryParams['nonce'] ?? '';
         $errCode = $this->decryptMsg($msg_signature, $timestamp, $nonce, $postStr, $msg);
         if ($errCode == 0) {
           $postStr = $msg;
@@ -607,8 +610,8 @@ class WeChatBase
 
     if ($this->encodingAesKey) {//安全模式
       $encryptMsg = '';
-      $timestamp = $_GET['timestamp'] ?? time();
-      $nonce = $_GET['nonce'] ?? '';
+      $timestamp = $this->queryParams['timestamp'] ?? time();
+      $nonce = $this->queryParams['nonce'] ?? '';
       $errCode = $this->encryptMsg($xmlData, $timestamp, $nonce, $encryptMsg);
       if ($errCode == 0) {
         $xmlData = $encryptMsg;
@@ -1070,13 +1073,12 @@ class WeChatBase
   /**
    * 第二步：通过code换取网页授权access_token
    * 通过code获取Access Token
+   * @param string $code
    * @return array
    * @throws Exception
    */
-  public function getOauthAccessToken(): array
+  public function getOauthAccessToken(string $code): array
   {
-    $code = $_GET['code'] ?? '';
-    if (!$code) throw new Exception('无code！');
     $url = 'https://api.weixin.qq.com/sns/oauth2/access_token?appid=' . $this->appid . '&secret=' . $this->app_secret . '&code=' . $code . '&grant_type=authorization_code';
     return $this->httpGet($url);
   }
@@ -1092,19 +1094,6 @@ class WeChatBase
   public function getOauthUserinfo(string $access_token, string $openid): array
   {
     return $this->httpGet('https://api.weixin.qq.com/sns/userinfo?access_token=' . $access_token . '&openid=' . $openid);
-  }
-
-  /**
-   * 长链接转短链接
-   * @param $long_url
-   * @return boolean|string
-   * @throws Exception
-   */
-  public function shortUrl($long_url): bool|string
-  {
-    $data = array('action' => 'long2short', 'long_url' => $long_url);
-    $result = $this->httpPost('https://api.weixin.qq.com/cgi-bin/shorturl?{ACCESS_TOKEN}', $data);
-    return $result['short_url'] ?? false;
   }
 
   /**
