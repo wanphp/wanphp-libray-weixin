@@ -14,7 +14,7 @@ use DOMDocument;
 use Exception;
 use GuzzleHttp\Client;
 use JetBrains\PhpStorm\ArrayShape;
-use Predis\ClientInterface;
+use Wanphp\Libray\Slim\CacheInterface;
 use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
 
@@ -30,7 +30,7 @@ class WeChatBase
   private string $jsapi_ticket;
   private array $_msg;
   private array $_receive;
-  private ClientInterface $redis;
+  private CacheInterface $cache;
   private array $queryParams;
 
   public static int $OK = 0;
@@ -43,16 +43,15 @@ class WeChatBase
   public static int $DecryptAESError = -40007;//aes 解密失败
   public static int $IllegalBuffer = -40008;//解密后得到的buffer非法
 
-  public function __construct(Setting $setting)
+  public function __construct(Setting $setting, CacheInterface $cache)
   {
     $options = $setting->get('wechat.base');
-    $redis = $setting->get('redis');
     $this->token = $options['token'] ?? '';
     $this->appid = $options['appid'] ?? '';
     $this->encodingAesKey = $options['encodingAesKey'] ?? '';
     $this->app_secret = $options['appsecret'] ?? '';
 
-    $this->redis = new \Predis\Client($redis['parameters'], $redis['options']);
+    $this->cache = $cache;
   }
 
   /**
@@ -625,14 +624,14 @@ class WeChatBase
 
 
   /**
-   * 通用auth验证方法，保存到redis
+   * 通用auth验证方法，保存到缓存库
    * @return string
    * @throws Exception
    */
   public function checkAuth(): string
   {
     //数据库取缓存
-    $access_token = $this->redis->get('weixin_access_token');
+    $access_token = $this->cache->get($this->appid . '_weixin_access_token');
     if (isset($access_token)) {
       $this->access_token = $access_token;
       return $access_token;
@@ -640,7 +639,7 @@ class WeChatBase
 
     $result = $this->httpGet('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=' . $this->appid . '&secret=' . $this->app_secret);
     if (isset($result['access_token'])) {
-      $this->redis->setex('weixin_access_token', $result['expires_in'], $result['access_token']);
+      $this->cache->set($this->appid . '_weixin_access_token', $result['access_token'], $result['expires_in']);
       $this->access_token = $result['access_token'];
       return $result['access_token'];
     }
@@ -1149,7 +1148,7 @@ class WeChatBase
    */
   private function getJsApiTicket(): string
   {
-    $jsapi_ticket = $this->redis->get('weixin_jsapi_ticket');
+    $jsapi_ticket = $this->cache->get($this->appid . '_weixin_jsapi_ticket');
     if ($jsapi_ticket) {
       $this->jsapi_ticket = $jsapi_ticket;
       return $jsapi_ticket;
@@ -1157,7 +1156,7 @@ class WeChatBase
 
     $result = $this->httpGet('https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&{ACCESS_TOKEN}');
     if ($result) {
-      $this->redis->setex('weixin_jsapi_ticket', $result['expires_in'], $result['ticket']);
+      $this->cache->set($this->appid . '_weixin_jsapi_ticket', $result['ticket'], $result['expires_in']);
       $this->jsapi_ticket = $result['ticket'];
       return $result['ticket'];
     }

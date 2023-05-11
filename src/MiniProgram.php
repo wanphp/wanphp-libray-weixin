@@ -12,7 +12,7 @@ namespace Wanphp\Libray\Weixin;
 
 use Exception;
 use GuzzleHttp\Client;
-use Predis\ClientInterface;
+use Wanphp\Libray\Slim\CacheInterface;
 use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
 
@@ -23,26 +23,25 @@ class MiniProgram
   private string $appid;
   private string $appSecret;
   private string $access_token;
-  private ClientInterface $redis;
+  private CacheInterface $cache;
 
-  public function __construct(Setting $setting)
+  public function __construct(Setting $setting, CacheInterface $cache)
   {
     $options = $setting->get('wechat.miniprogram');
-    $redis = $setting->get('redis');
     $this->appid = $options['appid'] ?? '';
     $this->appSecret = $options['appsecret'] ?? '';
-    $this->redis = new \Predis\Client($redis['parameters'], $redis['options']);
+    $this->cache = $cache;
   }
 
   /**
-   * 获取AccessToken，保存到redis
+   * 获取AccessToken，保存到缓存库
    * @return bool
    * @throws Exception
    */
   public function checkAccessToken(): bool
   {
     //数据库取缓存
-    $access_token = $this->redis->get('miniProgram_access_token');
+    $access_token = $this->cache->get($this->appid . '_miniProgram_access_token');
     if ($access_token) {
       $this->access_token = $access_token;
       return $access_token;
@@ -50,7 +49,7 @@ class MiniProgram
 
     $result = $this->httpGet('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=' . $this->appid . '&secret=' . $this->appSecret);
     if (isset($result['access_token'])) {
-      $this->redis->setex('miniProgram_access_token', $result['expires_in'], $result['access_token']);
+      $this->cache->set($this->appid . '_miniProgram_access_token', $result['access_token'], $result['expires_in']);
       $this->access_token = $result['access_token'];
       return $result['access_token'];
     } else {
