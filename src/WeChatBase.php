@@ -798,38 +798,26 @@ class WeChatBase
 
   /**
    * 识别二维码
-   * $image = file_get_contents($image_path);
-   * @param $data = array('img' => base64_encode($image));
+   * @param string $imagePath
    * @return array
    * @throws Exception
    */
-  public function identifyQRCode($data): array
+  public function identifyQRCode(string $imagePath): array
   {
-    return $this->httpPost('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $imagePath);
   }
 
   /**
-   * 识别行驶语
-   * $image = file_get_contents($image_path);
-   * @param $data = array('img' => base64_encode($image));
+   * 文字识别
+   * 身份证:idcard,银行卡:bankcard,行驶证:driving,驾驶证:drivinglicense,车牌:platenum,营业执照:bizlicense,通用印刷体:comm,菜单识别:menu
+   * @param string $type
+   * @param string $imagePath
    * @return array
    * @throws Exception
    */
-  public function identifyDriving($data): array
+  public function ocr(string $type, string $imagePath): array
   {
-    return $this->httpPost('https://api.weixin.qq.com/cv/ocr/driving?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 识别驾驶语
-   * $image = file_get_contents($image_path);
-   * @param $data = array('img' => base64_encode($image));
-   * @return array
-   * @throws Exception
-   */
-  public function identifyIDCard($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/cv/ocr/idcard?{ACCESS_TOKEN}', $data);
+    return $this->httpUpload('https://api.weixin.qq.com/cv/ocr/' . $type . '?{ACCESS_TOKEN}', $imagePath);
   }
 
   /**
@@ -1193,5 +1181,26 @@ class WeChatBase
     }
 
     return $this->request(new Client(), 'POST', $url, ['body' => json_encode($data, JSON_UNESCAPED_UNICODE), 'headers' => ['Accept' => 'application/json']]);
+  }
+
+  /**
+   * @param $url
+   * @param $filePath
+   * @return array
+   * @throws Exception
+   */
+  private function httpUpload($url, $filePath): array
+  {
+    if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
+      $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
+    }
+
+    return $this->request(new Client(), 'POST', $url, ['multipart' => [
+      [
+        'name' => 'file',
+        'contents' => fopen($filePath, 'r'),
+        'filename' => pathinfo($filePath, PATHINFO_BASENAME)
+      ]
+    ]]);
   }
 }
