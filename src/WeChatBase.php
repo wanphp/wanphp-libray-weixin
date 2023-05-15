@@ -804,7 +804,7 @@ class WeChatBase
    */
   public function identifyQRCode(string $imagePath): array
   {
-    return $this->httpPost('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $imagePath);
+    return $this->httpUpload('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $imagePath);
   }
 
   /**
