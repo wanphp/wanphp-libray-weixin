@@ -28,7 +28,6 @@ class WeChatBase
   private string $encodingAesKey;
   private string $access_token;
   private string $jsapi_ticket;
-  private array $_msg;
   private array $_receive;
   private CacheInterface $cache;
   private array $queryParams;
@@ -304,14 +303,23 @@ class WeChatBase
 
   /**
    * 设置发送消息
-   * @param array $msg 消息数组
-   * @param bool $append 是否在原消息数组追加
+   * @param string $type 消息类型 text，image，voice，video，music，news
+   * @param array $msg 消息数组,查看官方说明：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Passive_user_reply_message.html#2
+   * @return array|string
+   * @throws Exception
    */
-  public function Message(array $msg = [], bool $append = false): array|string
+  public function Message(string $type = 'text' | 'image' | 'voice' | 'video' | 'music' | 'news', array $msg = []): array|string
   {
-    if ($append) $this->_msg = array_merge($this->_msg, $msg);
-    else $this->_msg = $msg;
-    return $this->_msg;
+    if ($type == 'news') $msg['ArticleCount'] = count($msg['Articles']);
+
+    $msgData = array(
+      'ToUserName' => $this->getRevFrom(),
+      'FromUserName' => $this->getRevTo(),
+      'MsgType' => $type,
+      'CreateTime' => time()
+    );
+
+    return $this->reply(array_merge($msgData, $msg));
   }
 
   /**
@@ -504,107 +512,14 @@ class WeChatBase
   }
 
   /**
-   * 设置回复消息
-   * Example: $obj->text('hello')->reply();
-   * @param string $text
-   * @return WeChatBase
-   */
-  public function text(string $text = ''): static
-  {
-    $msg = array(
-      'ToUserName' => $this->getRevFrom(),
-      'FromUserName' => $this->getRevTo(),
-      'MsgType' => 'text',
-      'Content' => $text,
-      'CreateTime' => time()
-    );
-    $this->Message($msg);
-    return $this;
-  }
-
-  /**
-   * 回复多客服消息
-   * @return WeChatBase
-   */
-  public function service(): static
-  {
-    $msg = array(
-      'ToUserName' => $this->getRevFrom(),
-      'FromUserName' => $this->getRevTo(),
-      'CreateTime' => time(),
-      'MsgType' => 'transfer_customer_service'
-    );
-    $this->Message($msg);
-    return $this;
-  }
-
-  /**
-   * 设置回复音乐
-   * @param string $title
-   * @param string $desc
-   * @param string $musicUrl
-   * @param string $hgMusicUrl
-   * @return WeChatBase
-   */
-  public function music(string $title, string $desc, string $musicUrl, string $hgMusicUrl = ''): static
-  {
-    $msg = array(
-      'ToUserName' => $this->getRevFrom(),
-      'FromUserName' => $this->getRevTo(),
-      'CreateTime' => time(),
-      'MsgType' => 'music',
-      'Music' => array(
-        'Title' => $title,
-        'Description' => $desc,
-        'MusicUrl' => $musicUrl,
-        'HQMusicUrl' => $hgMusicUrl
-      )
-    );
-    $this->Message($msg);
-    return $this;
-  }
-
-  /**
-   * 设置回复图文
-   * @param array $newsData
-   * 数组结构:
-   *  array(
-   *    [0]=>array(
-   *        'Title'=>'msg title',
-   *        'Description'=>'summary text',
-   *        'PicUrl'=>'http://www.domain.com/1.jpg',
-   *        'Url'=>'http://www.domain.com/1.html'
-   *    ),
-   *    [1]=>....
-   *  )
-   */
-  public function news(array $newsData = array()): static
-  {
-    $count = count($newsData);
-
-    $msg = array(
-      'ToUserName' => $this->getRevFrom(),
-      'FromUserName' => $this->getRevTo(),
-      'MsgType' => 'news',
-      'CreateTime' => time(),
-      'ArticleCount' => $count,
-      'Articles' => $newsData
-    );
-    $this->Message($msg);
-    return $this;
-  }
-
-  /**
    *
-   * 回复微信服务器, 此函数支持链式操作
-   * @param array $msg 要发送的信息, 默认取$this->_msg
+   * 回复微信服务器
+   * @param array $msg 要发送的信息
    * @return string
    * @throws Exception
    */
-  public function reply(array $msg = array()): string
+  public function reply(array $msg): string
   {
-    if (empty($msg)) $msg = $this->_msg;
-
     $xmlData = $this->toXml($msg);
 
     if ($this->encodingAesKey) {//安全模式
@@ -698,59 +613,6 @@ class WeChatBase
   public function deleteMenu(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/cgi-bin/menu/delete?{ACCESS_TOKEN}');
-  }
-
-  /**
-   * 根据媒体文件ID获取媒体文件
-   * @param string $media_id 媒体文件id
-   * @return array
-   * @throws Exception
-   */
-  public function getMedia(string $media_id): array
-  {
-    return $this->httpGet('https://api.weixin.qq.com/cgi-bin/media/get?{ACCESS_TOKEN}&media_id=' . $media_id);
-  }
-
-  /**
-   * 媒体下载,获取临时素材
-   * @param string $media_id 媒体文件id
-   * @param string $path
-   * @return array
-   * @throws Exception
-   */
-  #[ArrayShape(['type' => "mixed", 'file' => "string"])] function getDownloadFile(string $media_id, string $path): array
-  {
-    $url = 'https://api.weixin.qq.com/cgi-bin/media/get?{ACCESS_TOKEN}&media_id=' . $media_id;
-    $save_path = rtrim($path, '/');
-    $res = $this->httpGet($url);
-
-    $type = explode('/', $res['content_type']);
-    $filepath = '/' . $type[0] . date('/Ym/');
-
-    $f = explode('"', $res['content_disposition']);
-    $extension = strtolower(pathinfo($f[1], PATHINFO_EXTENSION));
-    $basename = bin2hex(random_bytes(8));
-    $filename = sprintf('%s.%0.8s', $basename, $extension);
-
-    if (!is_dir($save_path . $filepath)) mkdir($save_path . $filepath, 0755, true);
-    $file = $filepath . $filename;
-    $this->saveFile($save_path . $file, $res['body']);
-
-    return ['type' => $res['content_type'], 'file' => $file];
-  }
-
-  /**
-   * @param $filename
-   * @param $body
-   */
-  private function saveFile($filename, $body)
-  {
-    $local_file = fopen($filename, 'w');
-    if (false !== $local_file) {
-      if (false !== fwrite($local_file, $body)) {
-        fclose($local_file);
-      }
-    }
   }
 
   /**
@@ -1034,6 +896,22 @@ class WeChatBase
   }
 
   /**
+   * 回复多客服消息
+   * @return string
+   * @throws Exception
+   */
+  public function service(): string
+  {
+    $msg = array(
+      'ToUserName' => $this->getRevFrom(),
+      'FromUserName' => $this->getRevTo(),
+      'CreateTime' => time(),
+      'MsgType' => 'transfer_customer_service'
+    );
+    return $this->reply($msg);
+  }
+
+  /**
    * 获取未接入会话列表
    * /**
    * @return array
@@ -1042,6 +920,172 @@ class WeChatBase
   public function getWaitCase(): array
   {
     return $this->httpGet('https://api.weixin.qq.com/customservice/kfsession/getwaitcase?{ACCESS_TOKEN}');
+  }
+
+  /**
+   * 获取素材列表
+   * /**
+   * @param array $data = ["type":素材的类型，图片（image）、视频（video）、语音 （voice）,  "offset":0表示从第一个素材 返回,  "count":取值在1到20之间]
+   * @return array
+   * @throws Exception
+   */
+  public function batchGetMaterial(array $data): array
+  {
+    return $this->httpPost('https://api.weixin.qq.com/cgi-bin/material/batchget_material?{ACCESS_TOKEN}', $data);
+  }
+
+  /**
+   * 上传图文消息内的图片获取URL
+   * 本接口所上传的图片不占用公众号的素材库中图片数量的100000个的限制。图片仅支持jpg/png格式，大小必须在1MB以下。
+   * @param string $filePath
+   * @return array
+   * @throws Exception
+   */
+  public function uploadImage(string $filePath): array
+  {
+    return $this->httpUpload('https://api.weixin.qq.com/cgi-bin/media/uploadimg?{ACCESS_TOKEN}', $filePath, 'media');
+  }
+
+  /**
+   * 新增临时素材
+   * @param string $type 媒体文件类型，分别有图片（image）、语音（voice）、视频（video）和缩略图（thumb）
+   * @param string $filePath 文件路径
+   * @return array
+   * @throws Exception
+   */
+  public function uploadMaterial(string $type, string $filePath): array
+  {
+    return $this->httpUpload('https://api.weixin.qq.com/cgi-bin/media/upload?type=' . $type . '&{ACCESS_TOKEN}', $filePath, 'media');
+  }
+
+  /**
+   * 新增其他类型永久素材
+   * @param string $type 媒体文件类型，分别有图片（image）、语音（voice）、视频（video）和缩略图（thumb）
+   * @param string $filePath 文件路径
+   * @param array $description {"title":视频素材的标题, "introduction":视频素材的描述}
+   * @return array
+   * @throws Exception
+   */
+  public function addMaterial(string $type, string $filePath, array $description = []): array
+  {
+    if ($type == 'video') {
+      if ($this->checkAuth() == '') return [];
+      return $this->request(new Client(), 'POST',
+        'https://api.weixin.qq.com/cgi-bin/material/add_material?type=video&access_token=' . $this->access_token,
+        ['multipart' => [
+          [
+            'name' => 'media',
+            'contents' => fopen($filePath, 'r'),
+            'filename' => pathinfo($filePath, PATHINFO_BASENAME)
+          ],
+          [
+            'name' => 'description',
+            'contents' => json_encode($description)
+          ]
+        ]]);
+    }
+    return $this->httpUpload('https://api.weixin.qq.com/cgi-bin/material/add_material?type=' . $type . '&{ACCESS_TOKEN}', $filePath, 'media');
+  }
+
+  /**
+   * 获取永久素材,临时素材
+   * @param string $media_id 媒体文件id
+   * @param string $path 下载文件存放目录
+   * @param bool $temporary
+   * @return array
+   * @throws \GuzzleHttp\Exception\GuzzleException
+   */
+  public function downloadMaterial(string $media_id, string $path, bool $temporary = true): array
+  {
+    if ($this->checkAuth() == '') return [];
+    if ($temporary) $url = 'https://api.weixin.qq.com/cgi-bin/media/get?access_token=' . $this->access_token . '&media_id=' . $media_id;
+    else $url = 'https://api.weixin.qq.com/cgi-bin/material/get_material?access_token=' . $this->access_token;
+
+    $client = new \GuzzleHttp\Client();
+    $save_path = rtrim($path, '/');
+    $basename = bin2hex(random_bytes(8));
+    $downloadFile = $save_path . '/temp/' . sprintf('%s.%0.8s', $basename, 'dat');
+    if (!is_dir($save_path . '/temp')) mkdir($save_path . '/temp', 0755, true);
+    if ($temporary) $resp = $client->request('GET', $url, ['sink' => $downloadFile]);
+    else $resp = $client->request('POST', $url, ['body' => json_encode(['media_id' => $media_id]), 'sink' => $downloadFile, 'headers' => ['Accept' => 'application/json']]);
+
+    $content_type = $resp->getHeaderLine('Content-Type');
+    if (str_contains($content_type, 'application/json') || str_contains($content_type, 'text/plain')) {
+      // 删除文件
+      if (is_file($downloadFile)) unlink($downloadFile);
+      $json = json_decode($resp->getBody()->getContents(), true);
+      if (json_last_error() === JSON_ERROR_NONE) return $json;
+    } else {
+      $content_type = mime_content_type($downloadFile);
+      if ($content_type) {
+        $type = explode('/', $content_type);
+        $filepath = '/' . $type[0] . date('/Ym/');
+        $extension = '';
+        switch ($type[1]) {
+          case 'gif':
+            $extension = 'gif';
+            break;
+          case 'jpg':
+          case 'jpeg':
+            $extension = 'jpg';
+            break;
+          case 'png':
+            $extension = 'png';
+            break;
+          case 'mpeg':
+            $extension = 'mp3';
+            break;
+        }
+
+        if ($extension) {
+          $filename = sprintf('%s.%0.8s', $basename, $extension);
+
+          if (!is_dir($save_path . $filepath)) mkdir($save_path . $filepath, 0755, true);
+          if (rename($downloadFile, $save_path . $filepath . $filename)) {
+            return ['type' => $content_type, 'file' => $filepath . $filename];
+          }
+        }
+        if (is_file($downloadFile)) unlink($downloadFile);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * 获取永久素材,临时素材
+   * @param string $media_id 媒体文件id
+   * @param bool $temporary
+   * @return array
+   * @throws Exception
+   */
+  public function getMaterial(string $media_id, bool $temporary = true): array
+  {
+    if ($temporary) $url = 'https://api.weixin.qq.com/cgi-bin/media/get?{ACCESS_TOKEN}&media_id=' . $media_id;
+    else $url = 'https://api.weixin.qq.com/cgi-bin/material/get_material?{ACCESS_TOKEN}';
+
+    if ($temporary) return $this->httpGet($url);
+    else return $this->httpPost($url, ['media_id' => $media_id]);
+  }
+
+  /**
+   * 删除永久素材
+   * @param string $media_id
+   * @return array
+   * @throws Exception
+   */
+  public function delMaterial(string $media_id): array
+  {
+    return $this->httpPost('https://api.weixin.qq.com/cgi-bin/material/del_material?{ACCESS_TOKEN}', ['media_id' => $media_id]);
+  }
+
+  /**
+   * 获取素材总数
+   * @return array
+   * @throws Exception
+   */
+  public function getMaterialCount(): array
+  {
+    return $this->httpGet('https://api.weixin.qq.com/cgi-bin/material/get_materialcount?{ACCESS_TOKEN}');
   }
 
   /**
@@ -1186,10 +1230,11 @@ class WeChatBase
   /**
    * @param $url
    * @param $filePath
+   * @param string $field
    * @return array
    * @throws Exception
    */
-  private function httpUpload($url, $filePath): array
+  private function httpUpload($url, $filePath, string $field = 'img'): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
@@ -1197,7 +1242,7 @@ class WeChatBase
 
     return $this->request(new Client(), 'POST', $url, ['multipart' => [
       [
-        'name' => 'file',
+        'name' => $field,
         'contents' => fopen($filePath, 'r'),
         'filename' => pathinfo($filePath, PATHINFO_BASENAME)
       ]
