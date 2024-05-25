@@ -13,7 +13,6 @@ namespace Wanphp\Libray\Weixin;
 use DOMDocument;
 use Exception;
 use GuzzleHttp\Client;
-use JetBrains\PhpStorm\ArrayShape;
 use Wanphp\Libray\Slim\CacheInterface;
 use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
@@ -31,7 +30,8 @@ class WeChatBase
   private array $_receive;
   private CacheInterface $cache;
   private array $queryParams;
-
+  public string $uin_base64;
+  public bool $webAuthorization = false;
   public static int $OK = 0;
   public static int $ValidateSignatureError = -40001;//签名验证错误
   public static int $ParseXmlError = -40002;//xml解析失败
@@ -49,6 +49,8 @@ class WeChatBase
     $this->appid = $options['appid'] ?? '';
     $this->encodingAesKey = $options['encodingAesKey'] ?? '';
     $this->app_secret = $options['appsecret'] ?? '';
+    $this->uin_base64 = $options['uin_base64'] ?? '';
+    $this->webAuthorization = $options['webAuthorization'] ?? true;
 
     $this->cache = $cache;
   }
@@ -94,7 +96,7 @@ class WeChatBase
 
   /**
    * 对解密后的明文进行补位删除
-   * @param string decrypted 解密后的明文
+   * @param string $text decrypted 解密后的明文
    * @return string 删除填充补位后的明文
    */
   function PKCS7Decode(string $text): string
