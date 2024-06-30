@@ -21,15 +21,15 @@ class WeChatBase
 {
   use HttpTrait;
 
-  private string $token;
-  private string $appid;
-  private string $app_secret;
-  private string $encodingAesKey;
-  private string $access_token;
-  private string $jsapi_ticket;
-  private array $_receive;
-  private CacheInterface $cache;
-  private array $queryParams;
+  protected string $token;
+  protected string $appid;
+  protected string $app_secret;
+  protected string $encodingAesKey;
+  protected string $access_token;
+  protected string $jsapi_ticket;
+  protected array $_receive;
+  protected CacheInterface $cache;
+  protected array $queryParams;
   public string $uin_base64;
   public bool $webAuthorization = false;
   public static int $OK = 0;
@@ -267,7 +267,7 @@ class WeChatBase
   /**
    * For weixin server validation
    */
-  private function checkSignature(): bool
+  protected function checkSignature(): bool
   {
     $signature = $this->queryParams["signature"] ?? '';
     $timestamp = $this->queryParams["timestamp"] ?? '';
@@ -1165,7 +1165,7 @@ class WeChatBase
     }
   }
 
-  private function createNonceStr($length = 16): string
+  protected function createNonceStr($length = 16): string
   {
     $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     $str = "";
@@ -1180,7 +1180,7 @@ class WeChatBase
    * @return string
    * @throws Exception
    */
-  private function getJsApiTicket(): string
+  protected function getJsApiTicket(): string
   {
     $jsapi_ticket = $this->cache->get($this->appid . '_weixin_jsapi_ticket');
     if ($jsapi_ticket) {
@@ -1203,7 +1203,7 @@ class WeChatBase
    * @return array
    * @throws Exception
    */
-  private function httpGet($url, string $referer = ''): array
+  protected function httpGet($url, string $referer = ''): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
@@ -1220,7 +1220,7 @@ class WeChatBase
    * @return array
    * @throws Exception
    */
-  private function httpPost($url, $data): array
+  protected function httpPost($url, $data): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
@@ -1236,7 +1236,7 @@ class WeChatBase
    * @return array
    * @throws Exception
    */
-  private function httpUpload($url, $filePath, string $field = 'img'): array
+  protected function httpUpload($url, $filePath, string $field = 'img'): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
