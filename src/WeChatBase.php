@@ -48,7 +48,7 @@ class WeChatBase
     $this->webAuthorization = $options['webAuthorization'] ?? true;
 
     $this->cache = $cache;
-    $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/cgi-bin/component/']);
+    $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/cgi-bin/']);
     $this->headers = ['Accept' => 'application/json'];
     $this->bizMsgCrypt = new WXBizMsgCrypt($this->message_token, $this->message_encodingAesKey, $this->appid);
   }
