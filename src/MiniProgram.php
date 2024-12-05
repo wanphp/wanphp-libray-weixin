@@ -13,17 +13,19 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use Wanphp\Libray\Slim\CacheInterface;
-use Wanphp\Libray\Slim\HttpTrait;
 use Wanphp\Libray\Slim\Setting;
+use Wanphp\Libray\Weixin\Traits\HttpTrait;
 
 class MiniProgram
 {
   use HttpTrait;
 
-  private string $appid;
-  private string $appSecret;
-  private string $access_token;
-  private CacheInterface $cache;
+  protected string $appid;
+  protected string $appSecret;
+  protected string $access_token;
+  protected CacheInterface $cache;
+  protected Client $client;
+  protected array $headers;
 
   public function __construct(Setting $setting, CacheInterface $cache)
   {
@@ -31,14 +33,17 @@ class MiniProgram
     $this->appid = $options['appid'] ?? '';
     $this->appSecret = $options['appsecret'] ?? '';
     $this->cache = $cache;
+
+    $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/']);
+    $this->headers = ['Accept' => 'application/json'];
   }
 
   /**
    * 获取AccessToken，保存到缓存库
-   * @return bool
+   * @return string
    * @throws Exception
    */
-  public function checkAccessToken(): bool
+  public function checkAuth(): string
   {
     //数据库取缓存
     $access_token = $this->cache->get($this->appid . '_miniProgram_access_token');
@@ -81,116 +86,6 @@ class MiniProgram
     return $this->httpGet('https://api.weixin.qq.com/wxa/getpaidunionid?{ACCESS_TOKEN}&openid=' . $openid . '&transaction_id=' . $transaction_id);
   }
 
-  /**
-   * 获取用户访问小程序日留存
-   * @param $data ["begin_date" => "20170313","end_date" => "20170313"] 结束日期，限定查询1天数据，允许设置的最大值为昨日。
-   * @return array
-   * @throws Exception
-   */
-  public function getDailyRetain($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappiddailyretaininfo?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序月留存
-   * @param $data ["begin_date" : "20170201(为自然月第一天)",  "end_date" : "20170228(为自然月最后一天)"]
-   * @return array
-   * @throws Exception
-   */
-  public function getMonthlyRetain($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidmonthlyretaininfo?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序周留存
-   * @param $data ["begin_date" : "20170306(为周一日期)",  "end_date" : "20170312(为周日日期)"]
-   * @return array
-   * @throws Exception
-   */
-  public function getWeeklyRetain($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidweeklyretaininfo?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序数据概况
-   * @param $data ["begin_date" => "20170313","end_date" => "20170313"] 结束日期，限定查询1天数据，允许设置的最大值为昨日。
-   * @return array
-   * @throws Exception
-   */
-  public function getDailySummary($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappiddailysummarytrend?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序数据日趋势
-   * @param $data ["begin_date" => "20170313","end_date" => "20170313"] 结束日期，限定查询1天数据，允许设置的最大值为昨日。
-   * @return array
-   * @throws Exception
-   */
-  public function getDailyVisitTrend($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappiddailyvisittrend?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序数据月趋势(能查询到的最新数据为上一个自然月的数据)
-   * @param $data ["begin_date" : "20170201(为自然月第一天)",  "end_date" : "20170228(为自然月最后一天)"]
-   * @return array
-   * @throws Exception
-   */
-  public function getMonthlyVisitTrend($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidmonthlyvisittrend?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户访问小程序数据周趋势
-   * @param $data ["begin_date" : "20170306(为周一日期)",  "end_date" : "20170312(为周日日期)"]
-   * @return array
-   * @throws Exception
-   */
-  public function getWeeklyVisitTrend($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidweeklyvisittrend?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取小程序新增或活跃用户的画像分布数据。时间范围支持昨天、最近7天、最近30天。
-   * 其中，新增用户数为时间范围内首次访问小程序的去重用户数，活跃用户数为时间范围内访问过小程序的去重用户数。
-   * @param $data ["begin_date" => "20170611","end_date" => "20170617"] 结束日期，开始日期与结束日期相差的天数限定为0/6/29，分别表示查询最近1/7/30天数据，允许设置的最大值为昨日。
-   * @return array
-   * @throws Exception
-   */
-  public function getUserPortrait($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappiduserportrait?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 获取用户小程序访问分布数据
-   * @param $data ["begin_date" => "20170313", "end_date" => "20170313"] 结束日期，限定查询 1 天数据，允许设置的最大值为昨日.
-   * @return array
-   * @throws Exception
-   */
-  public function getVisitDistribution($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidvisitdistribution?{ACCESS_TOKEN}', $data);
-  }
-
-  /**
-   * 访问页面。目前只提供按 page_visit_pv 排序的 top200。
-   * @param $data ["begin_date" => "20170313", "end_date" => "20170313"] 结束日期，限定查询 1 天数据，允许设置的最大值为昨日.
-   * @return array
-   * @throws Exception
-   */
-  public function getVisitPage($data): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/datacube/getweanalysisappidvisitpage?{ACCESS_TOKEN}', $data);
-  }
 
   /**
    * 获取小程序账号的类目
@@ -394,38 +289,5 @@ class MiniProgram
   public function realtimelogSearch(array $data): array
   {
     return $this->httpGet('https://api.weixin.qq.com/wxaapi/userlog/userlog_search?{ACCESS_TOKEN}&' . http_build_query($data));
-  }
-
-  /**
-   * @param $url
-   * @param string $referer
-   * @return array
-   * @throws Exception
-   */
-  private function httpGet($url, string $referer = ''): array
-  {
-    if (strpos($url, '{ACCESS_TOKEN}') != false) {
-      if (!$this->access_token && !$this->checkAccessToken()) throw new Exception('ACCESS_TOKEN 无效', 400);
-      $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
-    }
-
-    $headers = ['Accept' => 'application/json'];
-    if ($referer != '') $headers['referer'] = $referer;
-    return $this->request(new Client(), 'GET', $url, ['headers' => $headers]);
-  }
-
-  /**
-   * @param $url
-   * @param $data
-   * @return array
-   * @throws Exception
-   */
-  private function httpPost($url, $data): array
-  {
-    if (strpos($url, '{ACCESS_TOKEN}') != false) {
-      if (!$this->access_token && !$this->checkAccessToken()) throw new Exception('ACCESS_TOKEN 无效', 400);
-      $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
-    }
-    return $this->request(new Client(), 'POST', $url, ['json' => $data, 'headers' => ['Accept' => 'application/json']]);
   }
 }
