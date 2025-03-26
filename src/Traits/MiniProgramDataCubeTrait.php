@@ -20,7 +20,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getDailyRetain($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappiddailyretaininfo?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappiddailyretaininfo?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -31,7 +31,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getMonthlyRetain($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidmonthlyretaininfo?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidmonthlyretaininfo?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -42,7 +42,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getWeeklyRetain($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidweeklyretaininfo?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidweeklyretaininfo?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -53,7 +53,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getDailySummary($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappiddailysummarytrend?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappiddailysummarytrend?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -64,7 +64,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getDailyVisitTrend($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappiddailyvisittrend?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappiddailyvisittrend?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -75,7 +75,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getMonthlyVisitTrend($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidmonthlyvisittrend?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidmonthlyvisittrend?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -86,7 +86,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getWeeklyVisitTrend($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidweeklyvisittrend?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidweeklyvisittrend?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -109,7 +109,7 @@ trait MiniProgramDataCubeTrait
    */
   public function getVisitDistribution($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidvisitdistribution?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidvisitdistribution?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -120,6 +120,6 @@ trait MiniProgramDataCubeTrait
    */
   public function getVisitPage($data): array
   {
-    return $this->httpPost('Goods/datacube/getweanalysisappidvisitpage?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('datacube/getweanalysisappidvisitpage?{ACCESS_TOKEN}', $data);
   }
 }
