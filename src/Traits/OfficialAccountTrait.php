@@ -123,15 +123,15 @@ trait OfficialAccountTrait
   public function getRev(): static
   {
     if (!empty($this->_receive)) return $this;
-    $postStr = file_get_contents("php://input");
+    $postXml = file_get_contents("php://input");
 
-    if (!empty($postStr)) {
-      $this->_receive = [];
+    if (!empty($postXml)) {
+      $this->_receive = $this->fromXml($postXml);
       if (isset($this->queryParams['msg_signature'])) {//安全模式
         $msg_signature = $this->queryParams['msg_signature'] ?? '';
         $timestamp = $this->queryParams['timestamp'] ?? time();
         $nonce = $this->queryParams['nonce'] ?? '';
-        $errCode = $this->bizMsgCrypt->decryptMsg($msg_signature, $timestamp, $nonce, $postStr, $this->_receive);
+        $errCode = $this->bizMsgCrypt->decryptMsg($msg_signature, $timestamp, $nonce, $postXml, $this->_receive);
         if ($errCode !== 0) {
           throw new Exception("解密出错: " . $errCode, 400);
         }
@@ -308,7 +308,7 @@ trait OfficialAccountTrait
   {
     $xmlData = $this->toXml($msg);
 
-    if (isset($this->queryParams['timestamp'])) {//安全模式
+    if (isset($this->queryParams['msg_signature'])) {//安全模式
       $timestamp = $this->queryParams['timestamp'];
       $nonce = $this->queryParams['nonce'];
       $errCode = $this->bizMsgCrypt->encryptMsg($xmlData, $timestamp, $nonce, $xmlData);
