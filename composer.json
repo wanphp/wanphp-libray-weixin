@@ -18,7 +18,7 @@
   "require": {
     "wanphp/installers": "*",
     "wanphp/libray-slim": "^1.0.0",
-    "wechatpay/wechatpay-guzzle-middleware": "^0.2.1",
+    "wechatpay/wechatpay": "^v1.4.12",
     "ext-openssl": "*",
     "ext-dom": "*",
     "ext-libxml": "*",
