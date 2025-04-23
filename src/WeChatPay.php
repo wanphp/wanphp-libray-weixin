@@ -25,12 +25,16 @@ class WeChatPay
   private BuilderChainable $instance;
   private string $mchid;
   private string $appid;
+  private string $notify_url;
   private string $apiV3Key;
   /**
    * @var array|array[]
    */
   private array $config;
 
+  /**
+   * @throws Exception
+   */
   public function __construct(Setting $setting)
   {
     $config = $setting->get('wechat.pay-v3');
@@ -44,20 +48,21 @@ class WeChatPay
     ) {
       $this->mchid = $config['merchantId'];
       $this->appid = $config['appid'];
+      $this->notify_url = $config['notify_url'];
       $this->apiV3Key = $config['apiV3Key'];
       $this->config = [
-        [
-          'mchid' => $config['merchantId'],
-          'serial' => $config['merchantCertificateSerial'],
-          'privateKey' => Rsa::from($config['merchantPrivateKeyFilePath']),
-          'certs' => [
-            $config['platformCertificateSerial'] => Rsa::from($config['platformCertificateFilePath'], Rsa::KEY_TYPE_PUBLIC),
-            $config['platformPublicKeyId'] => Rsa::from($config['platformPublicKeyFilePath'], Rsa::KEY_TYPE_PUBLIC),
-          ],
+        'mchid' => $config['merchantId'],
+        'serial' => $config['merchantCertificateSerial'],
+        'privateKey' => Rsa::from($config['merchantPrivateKeyFilePath']),
+        'certs' => [
+          $config['platformCertificateSerial'] => Rsa::from($config['platformCertificateFilePath'], Rsa::KEY_TYPE_PUBLIC),
+          $config['platformPublicKeyId'] => Rsa::from($config['platformPublicKeyFilePath'], Rsa::KEY_TYPE_PUBLIC),
         ]
       ];
       // 构造一个 APIv3 客户端实例
       $this->instance = Builder::factory($this->config);
+    } else {
+      throw new Exception('微信支付接口未正确配置', 500);
     }
   }
 
@@ -71,6 +76,7 @@ class WeChatPay
   {
     $data['mchid'] = $data['mchid'] ?? $this->mchid;
     $data['appid'] = $data['appid'] ?? $this->appid;
+    $data['notify_url'] = $data['notify_url'] ?? $this->notify_url;
     return $this->httpPost('/v3/pay/transactions/app', $data);
   }
 
@@ -84,6 +90,7 @@ class WeChatPay
   {
     $data['mchid'] = $data['mchid'] ?? $this->mchid;
     $data['appid'] = $data['appid'] ?? $this->appid;
+    $data['notify_url'] = $data['notify_url'] ?? $this->notify_url;
     return $this->httpPost('/v3/pay/transactions/jsapi', $data);
   }
 
@@ -115,6 +122,7 @@ class WeChatPay
   {
     $data['mchid'] = $data['mchid'] ?? $this->mchid;
     $data['appid'] = $data['appid'] ?? $this->appid;
+    $data['notify_url'] = $data['notify_url'] ?? $this->notify_url;
     return $this->httpPost('v3/pay/transactions/native', $data);
   }
 
@@ -128,6 +136,7 @@ class WeChatPay
   {
     $data['mchid'] = $data['mchid'] ?? $this->mchid;
     $data['appid'] = $data['appid'] ?? $this->appid;
+    $data['notify_url'] = $data['notify_url'] ?? $this->notify_url;
     return $this->httpPost('/v3/pay/transactions/h5', $data);
   }
 
@@ -172,6 +181,7 @@ class WeChatPay
    */
   public function refunds(array $data): array
   {
+    $data['notify_url'] = $data['notify_url'] ?? $this->notify_url;
     return $this->httpPost("/v3/refund/domestic/refunds", $data);
   }
 
