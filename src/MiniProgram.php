@@ -12,7 +12,7 @@ namespace Wanphp\Libray\Weixin;
 
 use Exception;
 use GuzzleHttp\Client;
-use Wanphp\Libray\Slim\CacheInterface;
+use Psr\SimpleCache\CacheInterface;
 use Wanphp\Libray\Slim\Setting;
 use Wanphp\Libray\Weixin\Traits\HttpTrait;
 
