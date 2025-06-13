@@ -13,6 +13,8 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Psr16Cache;
+use Wanphp\Libray\Slim\RedisCacheFactory;
 use Wanphp\Libray\Slim\Setting;
 use Wanphp\Libray\Weixin\Traits\HttpTrait;
 
@@ -27,12 +29,12 @@ class MiniProgram
   protected Client $client;
   protected array $headers;
 
-  public function __construct(Setting $setting, CacheInterface $cache)
+  public function __construct(Setting $setting, RedisCacheFactory $cacheFactory)
   {
     $options = $setting->get('wechat.miniprogram');
     $this->appid = $options['appid'] ?? '';
     $this->appSecret = $options['appsecret'] ?? '';
-    $this->cache = $cache;
+    $this->cache = new Psr16Cache($cacheFactory->create($options['database'] ?? 0, $options['prefix'] ?? 'wxMiniProgram'));
 
     $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/']);
     $this->headers = ['Accept' => 'application/json'];

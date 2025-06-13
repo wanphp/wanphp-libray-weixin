@@ -10,6 +10,8 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Psr16Cache;
+use Wanphp\Libray\Slim\RedisCacheFactory;
 use Wanphp\Libray\Slim\Setting;
 use Wanphp\Libray\Weixin\Traits\OfficialAccountTrait;
 
@@ -30,7 +32,7 @@ class ThirdPartyPlatforms
   private array $headers;
   private WXBizMsgCrypt $bizMsgCrypt;
 
-  public function __construct(Setting $setting, CacheInterface $cache)
+  public function __construct(Setting $setting, RedisCacheFactory $cacheFactory)
   {
     $options = $setting->get('wxThirdPartyPlatforms');
     $this->APPID = $options['APPID'] ?? '';
@@ -38,7 +40,7 @@ class ThirdPartyPlatforms
     $this->message_token = $options['message_token'] ?? '';
     $this->message_encodingAesKey = $options['message_encodingAesKey'] ?? '';
 
-    $this->cache = $cache;
+    $this->cache = new Psr16Cache($cacheFactory->create($options['database'] ?? 0, $options['prefix'] ?? 'wxThird'));
     $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/cgi-bin/']);
     $this->headers = ['Accept' => 'application/json'];
     $this->bizMsgCrypt = new WXBizMsgCrypt($this->message_token, $this->message_encodingAesKey, $this->APPID);
@@ -60,24 +62,24 @@ class ThirdPartyPlatforms
       switch ($message['InfoType']) {
         case 'component_verify_ticket':
           // 存放验证票据
-          $this->cache->set('forever_component_verify_ticket', $message['ComponentVerifyTicket'], 3600 * 12);
+          $this->cache->set('component_verify_ticket', $message['ComponentVerifyTicket'], 3600 * 12);
           break;
         case 'authorized':
           // 授权成功
           $this->getAuthorizerRefreshToken($message['AuthorizationCode']);
-          $this->cache->set('forever_' . $this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
+          $this->cache->set($this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
           break;
         case 'updateauthorized':
           // 更新授权
           $this->getAuthorizerRefreshToken($message['AuthorizationCode']);
-          $this->cache->set('forever_' . $this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
+          $this->cache->set($this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
           break;
         case 'unauthorized':
           // 取消授权，删除本地记录
           $this->cache->deleteMultiple([
-            'forever_' . $message['AuthorizerAppid'] . '_authorizer_access_token',
-            'forever_' . $message['AuthorizerAppid'] . '_authorizer_refresh_token',
-            'forever_' . $message['AuthorizerAppid'] . '_func_info'
+            $message['AuthorizerAppid'] . '_authorizer_access_token',
+            $message['AuthorizerAppid'] . '_authorizer_refresh_token',
+            $message['AuthorizerAppid'] . '_func_info'
           ]);
           break;
         default:
@@ -97,7 +99,7 @@ class ThirdPartyPlatforms
   {
     if (!empty($this->access_token)) return $this->access_token;
     // 取缓存
-    $cacheKey = 'forever_' . $this->APPID . '_component_access_token';
+    $cacheKey = $this->APPID . '_component_access_token';
     $component_access_token = $this->cache->get($cacheKey);
     if (!empty($component_access_token)) {
       $this->access_token = $component_access_token;
@@ -108,7 +110,7 @@ class ThirdPartyPlatforms
       'json' => [
         'component_appid' => $this->APPID,
         'component_appsecret' => $this->AppSecret,
-        'component_verify_ticket' => $this->cache->get('forever_component_verify_ticket', '')
+        'component_verify_ticket' => $this->cache->get('component_verify_ticket', '')
       ],
       'headers' => $this->headers
     ]);
@@ -127,7 +129,7 @@ class ThirdPartyPlatforms
   private function getPreAuthCode(): string
   {
     // 取缓存
-    $cacheKey = 'forever_' . $this->APPID . '_pre_auth_code';
+    $cacheKey = $this->APPID . '_pre_auth_code';
     $pre_auth_code = $this->cache->get($cacheKey);
     if (!empty($pre_auth_code)) return $pre_auth_code;
 
@@ -186,10 +188,10 @@ class ThirdPartyPlatforms
     ]);
     if (isset($result['authorization_info'])) {
       $info = $result['authorization_info'];
-      $this->cache->set('forever_' . $info['authorizer_appid'] . '_authorizer_access_token', $info['authorizer_access_token'], $info['expires_in']);
-      $this->cache->set('forever_' . $info['authorizer_appid'] . '_authorizer_refresh_token', $info['authorizer_refresh_token']);
+      $this->cache->set($info['authorizer_appid'] . '_authorizer_access_token', $info['authorizer_access_token'], $info['expires_in']);
+      $this->cache->set($info['authorizer_appid'] . '_authorizer_refresh_token', $info['authorizer_refresh_token']);
       // 授权给开发者的权限集列表
-      $this->cache->set('forever_' . $info['authorizer_appid'] . '_func_info', $info['func_info']);
+      $this->cache->set($info['authorizer_appid'] . '_func_info', $info['func_info']);
       return $info['authorizer_refresh_token'];
     }
     return '';
@@ -205,11 +207,11 @@ class ThirdPartyPlatforms
   private function getAuthorizerAccessToken(string $authorizer_appid): string
   {
     // 取缓存
-    $cacheKey = 'forever_' . $authorizer_appid . '_authorizer_access_token';
+    $cacheKey = $authorizer_appid . '_authorizer_access_token';
     $authorizer_access_token = $this->cache->get($cacheKey);
     if (isset($authorizer_access_token)) return $authorizer_access_token;
     // 刷新令牌
-    $cacheRefreshTokenKey = 'forever_' . $authorizer_appid . '_authorizer_refresh_token';
+    $cacheRefreshTokenKey = $authorizer_appid . '_authorizer_refresh_token';
     $authorizer_refresh_token = $this->cache->get($cacheRefreshTokenKey);
     if (empty($authorizer_refresh_token)) {
       throw new Exception('用户未授权！');

@@ -13,6 +13,8 @@ namespace Wanphp\Libray\Weixin;
 use Exception;
 use GuzzleHttp\Client;
 use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Psr16Cache;
+use Wanphp\Libray\Slim\RedisCacheFactory;
 use Wanphp\Libray\Slim\Setting;
 use Wanphp\Libray\Weixin\Traits\OfficialAccountTrait;
 
@@ -37,7 +39,7 @@ class WeChatBase
   private array $headers;
   private WXBizMsgCrypt $bizMsgCrypt;
 
-  public function __construct(Setting $setting, CacheInterface $cache)
+  public function __construct(Setting $setting, RedisCacheFactory $cacheFactory)
   {
     $options = $setting->get('wechat.base');
     $this->message_token = $options['token'] ?? '';
@@ -47,7 +49,7 @@ class WeChatBase
     $this->uin_base64 = $options['uin_base64'] ?? '';
     $this->webAuthorization = $options['webAuthorization'] ?? true;
 
-    $this->cache = $cache;
+    $this->cache = new Psr16Cache($cacheFactory->create($options['database'] ?? 0, $options['prefix'] ?? 'wxBase'));
     $this->client = new Client(['base_uri' => 'https://api.weixin.qq.com/cgi-bin/']);
     $this->headers = ['Accept' => 'application/json'];
     $this->bizMsgCrypt = new WXBizMsgCrypt($this->message_token, $this->message_encodingAesKey, $this->appid);
