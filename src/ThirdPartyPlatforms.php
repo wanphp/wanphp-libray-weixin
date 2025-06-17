@@ -66,12 +66,12 @@ class ThirdPartyPlatforms
           break;
         case 'authorized':
           // 授权成功
-          $this->getAuthorizerRefreshToken($message['AuthorizationCode']);
+          $this->getAuthorizerAppid($message['AuthorizationCode']);
           $this->cache->set($this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
           break;
         case 'updateauthorized':
           // 更新授权
-          $this->getAuthorizerRefreshToken($message['AuthorizationCode']);
+          $this->getAuthorizerAppid($message['AuthorizationCode']);
           $this->cache->set($this->APPID . '_pre_auth_code', $message['PreAuthCode'], 600);
           break;
         case 'unauthorized':
@@ -180,7 +180,7 @@ class ThirdPartyPlatforms
    * 获取授权账号的authorizer_access_token
    * @throws Exception
    */
-  public function getAuthorizerRefreshToken($authorization_code): string
+  public function getAuthorizerAppid($authorization_code): string
   {
     $result = $this->request($this->client, 'POST', 'component/api_query_auth?component_access_token=' . $this->getComponentAccessToken(), [
       'json' => ['component_appid' => $this->APPID, 'authorization_code' => $authorization_code],
@@ -192,7 +192,7 @@ class ThirdPartyPlatforms
       $this->cache->set($info['authorizer_appid'] . '_authorizer_refresh_token', $info['authorizer_refresh_token']);
       // 授权给开发者的权限集列表
       $this->cache->set($info['authorizer_appid'] . '_func_info', $info['func_info']);
-      return $info['authorizer_refresh_token'];
+      return $info['authorizer_appid'];
     }
     return '';
   }
@@ -214,7 +214,14 @@ class ThirdPartyPlatforms
     $cacheRefreshTokenKey = $authorizer_appid . '_authorizer_refresh_token';
     $authorizer_refresh_token = $this->cache->get($cacheRefreshTokenKey);
     if (empty($authorizer_refresh_token)) {
-      throw new Exception('用户未授权！');
+      $info = $this->getAuthorizerInfo($authorizer_appid);
+      if (isset($info['authorization_info'])) {
+        $authorizer_refresh_token = $info['authorization_info']['authorizer_refresh_token'];
+        $this->cache->set($cacheRefreshTokenKey, $authorizer_refresh_token);
+        $this->cache->set($authorizer_appid . '_func_info', $info['authorization_info']['func_info']);
+      } else {
+        throw new Exception('用户未授权！');
+      }
     }
 
     $result = $this->request($this->client, 'POST', 'component/api_authorizer_token?component_access_token=' . $this->getComponentAccessToken(), [
