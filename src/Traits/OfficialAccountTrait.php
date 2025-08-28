@@ -416,30 +416,6 @@ trait OfficialAccountTrait
   }
 
   /**
-   * 识别二维码
-   * @param string $imagePath
-   * @return array
-   * @throws Exception
-   */
-  public function identifyQRCode(string $imagePath): array
-  {
-    return $this->httpUpload('https://api.weixin.qq.com/cv/img/qrcode?{ACCESS_TOKEN}', $imagePath);
-  }
-
-  /**
-   * 文字识别
-   * 身份证:idcard,银行卡:bankcard,行驶证:driving,驾驶证:drivinglicense,车牌:platenum,营业执照:bizlicense,通用印刷体:comm,菜单识别:menu
-   * @param string $type
-   * @param string $imagePath
-   * @return array
-   * @throws Exception
-   */
-  public function ocr(string $type, string $imagePath): array
-  {
-    return $this->httpUpload('https://api.weixin.qq.com/cv/ocr/' . $type . '?{ACCESS_TOKEN}', $imagePath);
-  }
-
-  /**
    * 批量获取关注用户列表
    * @param string $next_openid
    * @return array

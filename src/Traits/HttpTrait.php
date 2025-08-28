@@ -46,24 +46,27 @@ trait HttpTrait
   }
 
   /**
-   * @param $url
-   * @param $filePath
+   * @param string $url
+   * @param string $filePath
    * @param string $field
+   * @param array $postData
    * @return array
    * @throws Exception
    */
-  protected function httpUpload($url, $filePath, string $field = 'img'): array
+  protected function httpUpload(string $url, string $filePath, string $field = 'img', array $postData = []): array
   {
     if (str_contains($url, '{ACCESS_TOKEN}') && $this->checkAuth()) {
       $url = str_replace('{ACCESS_TOKEN}', 'access_token=' . $this->access_token, $url);
     }
-
-    return $this->request($this->client, 'POST', $url, ['multipart' => [
+    $multipart = [
       [
         'name' => $field,
         'contents' => fopen($filePath, 'r'),
         'filename' => pathinfo($filePath, PATHINFO_BASENAME)
       ]
-    ]]);
+    ];
+    if ($postData) foreach ($postData as $k => $v) $multipart[] = ['name' => $k, 'contents' => $v];
+
+    return $this->request($this->client, 'POST', $url, ['multipart' => $multipart]);
   }
 }

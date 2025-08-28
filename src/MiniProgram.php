@@ -17,10 +17,16 @@ use Symfony\Component\Cache\Psr16Cache;
 use Wanphp\Libray\Slim\RedisCacheFactory;
 use Wanphp\Libray\Slim\Setting;
 use Wanphp\Libray\Weixin\Traits\HttpTrait;
+use Wanphp\Libray\Weixin\Traits\ImageOcrTrait;
+use Wanphp\Libray\Weixin\Traits\MiniProgramDataCubeTrait;
+use Wanphp\Libray\Weixin\Traits\MiniProgramSubscribeMessageTrait;
 
 class MiniProgram
 {
   use HttpTrait;
+  use ImageOcrTrait;
+  use MiniProgramDataCubeTrait;
+  use MiniProgramSubscribeMessageTrait;
 
   protected string $appid;
   protected string $appSecret;
@@ -76,6 +82,52 @@ class MiniProgram
   }
 
   /**
+   * 检验登录态
+   * @param string $openid
+   * @param string $sessionKey
+   * @return array
+   * @throws Exception
+   */
+  public function checkSessionKey(string $openid, string $sessionKey): array
+  {
+    $signature = hash_hmac('sha256', '', $sessionKey);
+    return $this->httpGet('https://api.weixin.qq.com/wxa/checksession?{ACCESS_TOKEN}&openid=' . $openid . '&signature=' . $signature . '&sig_method=hmac_sha256');
+  }
+
+  /**
+   * 重置登录态
+   * @param string $openid
+   * @param string $sessionKey
+   * @return array
+   * @throws Exception
+   */
+  public function resetUserSessionKey(string $openid, string $sessionKey): array
+  {
+    $signature = hash_hmac('sha256', '', $sessionKey);
+    return $this->httpGet('https://api.weixin.qq.com/wxa/resetusersessionkey?{ACCESS_TOKEN}&openid=' . $openid . '&signature=' . $signature . '&sig_method=hmac_sha256');
+  }
+
+  /**
+   * 该接口用于将code换取用户手机号。 说明，每个code只能使用一次，code的有效期为5min
+   * @param string $code 手机号获取凭证
+   * @return array
+   * @throws Exception
+   */
+  public function getPhoneNumber(string $code): array
+  {
+    return $this->httpPost('https://api.weixin.qq.com/wxa/business/getuserphonenumber?{ACCESS_TOKEN}', ['code' => $code]);
+  }
+  /**
+   * 获取插件用户openpid
+   * @param string $code 通过 wx.pluginLogin 获得的插件用户标志凭证 code，有效时间为5分钟，一个 code 只能获取一次 openpid。
+   * @return array
+   * @throws Exception
+   */
+  public function getPluginOpenPId(string $code): array
+  {
+    return $this->httpPost('https://api.weixin.qq.com/wxa/getpluginopenpid?{ACCESS_TOKEN}', ['code' => $code]);
+  }
+  /**
    * 用户支付完成后，获取该用户的 UnionId，无需用户授权。本接口支持第三方平台代理查询。
    * 注意：调用前需要用户完成支付，且在支付后的五分钟内有效。
    * @param $openid
@@ -88,97 +140,58 @@ class MiniProgram
     return $this->httpGet('https://api.weixin.qq.com/wxa/getpaidunionid?{ACCESS_TOKEN}&openid=' . $openid . '&transaction_id=' . $transaction_id);
   }
 
-
   /**
-   * 获取小程序账号的类目
+   * 获取小程序码
+   * @param string $path 扫码进入的小程序页面路径，最大长度 1024 个字符，不能为空，scancode_time为系统保留参数，不允许配置；
+   * 对于小游戏，可以只传入 query 部分，来实现传参效果，如：传入 "?foo=bar"，
+   * 即可在 wx.getLaunchOptionsSync 接口中的 query 参数获取到 {foo:"bar"}。
+   * @param int $width 二维码的宽度，单位 px。默认值为430，最小 280px，最大 1280px
    * @return array
    * @throws Exception
    */
-  public function getCategory(): array
-  {
-    return $this->httpGet('https://api.weixin.qq.com/wxaapi/newtmpl/getcategory?{ACCESS_TOKEN}');
-  }
-
-  /**
-   * 获取帐号所属类目下的公共模板标题
-   * @param string $ids 类目id，多个用逗号隔开
-   * @param int $start 用于分页，表示从 start 开始。从 0 开始计数。
-   * @param int $limit 用于分页，表示拉取 limit 条记录。最大为 30。
-   * @return array
-   * @throws Exception
-   */
-  public function getPubTemplateTitleList(string $ids, int $start, int $limit): array
-  {
-    return $this->httpGet('https://api.weixin.qq.com/wxaapi/newtmpl/getpubtemplatetitles?{ACCESS_TOKEN}&ids=' . $ids . '&start=' . $start . '&limit=' . $limit);
-  }
-
-  /**
-   * 获取模板标题下的关键词列表
-   * @param string $tid
-   * @return array
-   * @throws Exception
-   */
-  public function getPubTemplateKeyWordsById(string $tid): array
-  {
-    return $this->httpGet('https://api.weixin.qq.com/wxaapi/newtmpl/getpubtemplatekeywords?{ACCESS_TOKEN}&tid' . $tid);
-  }
-
-  /**
-   * 组合模板并添加至帐号下的个人模板库
-   * @param string $tid 模板标题 id
-   * @param array $kidList 开发者自行组合好的模板关键词列表，关键词顺序可以自由搭配（例如 [3,5,4] 或 [4,5,3]），最多支持5个，最少2个关键词组合
-   * @param string $sceneDesc 服务场景描述，15个字以内
-   * @return array
-   * @throws Exception
-   */
-  public function addTemplate(string $tid, array $kidList, string $sceneDesc): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/wxaapi/newtmpl/addtemplate?{ACCESS_TOKEN}', ['tid' => $tid, 'kidList' => $kidList, 'sceneDesc' => $sceneDesc]);
-  }
-
-  /**
-   * 删除帐号下的个人模板
-   * @param string $priTmplId 个人模板id
-   * @return array
-   * @throws Exception
-   */
-  public function deleteTemplate(string $priTmplId): array
-  {
-    return $this->httpPost('https://api.weixin.qq.com/wxaapi/newtmpl/deltemplate?{ACCESS_TOKEN}', ['priTmplId' => $priTmplId]);
-  }
-
-  /**
-   * 获取当前帐号下的个人模板列表
-   * @return array
-   * @throws Exception
-   */
-  public function getTemplateList(): array
-  {
-    return $this->httpGet('https://api.weixin.qq.com/wxaapi/newtmpl/gettemplate?{ACCESS_TOKEN}');
-  }
-
-  /**
-   * 发送订阅消息
-   * @param string $touser 接收者（用户）的 openid
-   * @param string $template_id 所需下发的订阅模板id
-   * @param array $data 模板内容，格式形如 { "key1": { "value": any }, "key2": { "value": any } }
-   * @param string $page 点击模板卡片后的跳转页面，仅限本小程序内的页面。支持带参数,（示例index?foo=bar）。该字段不填则模板无跳转。
-   * @param string $miniprogram_state 跳转小程序类型：developer为开发版；trial为体验版；formal为正式版；默认为正式版
-   * @param string $lang 进入小程序查看”的语言类型，支持zh_CN(简体中文)、en_US(英文)、zh_HK(繁体中文)、zh_TW(繁体中文)，默认为zh_CN
-   * @return array
-   * @throws Exception
-   */
-  public function sendSubscribeMessage(string $touser, string $template_id, array $data, string $page = '', string $miniprogram_state = 'formal', string $lang = 'zh_CN'): array
+  public function getQRCode(string $path, int $width = 430): array
   {
     $data = [
-      'touser' => $touser,
-      'template_id' => $template_id,
-      'data' => $data,
-      'page' => $page,
-      'miniprogram_state' => $miniprogram_state,
-      'lang' => $lang
+      "path" => $path,
+      "width" => $width
     ];
-    return $this->httpPost('https://api.weixin.qq.com/cgi-bin/message/subscribe/send?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('https://api.weixin.qq.com/wxa/getwxacode?{ACCESS_TOKEN}', $data);
+  }
+
+  /**
+   * 获取小程序二维码
+   * @param string $path 扫码进入的小程序页面路径，最大长度 128 个字符，不能为空；
+   * 对于小游戏，可以只传入 query 部分，来实现传参效果，如：传入 "?foo=bar"，即可在 wx.getLaunchOptionsSync 接口中的 query 参数获取到 {foo:"bar"}。
+   * scancode_time为系统保留参数，不允许配置。
+   * @param int $width 二维码的宽度，单位 px。默认值为430，最小 280px，最大 1280px
+   * @return array
+   * @throws Exception
+   */
+  public function createQRCode(string $path, int $width = 430): array
+  {
+    $data = [
+      "path" => $path,
+      "width" => $width
+    ];
+    return $this->httpPost('https://api.weixin.qq.com/cgi-bin/wxaapp/createwxaqrcode?{ACCESS_TOKEN}', $data);
+  }
+
+  /**
+   * 获取不限制的小程序码
+   * @param string $scene 最大32个可见字符
+   * @param string $page 默认是主页，页面 page，例如 pages/index/index
+   * @param int $width 默认430，二维码的宽度，单位 px，最小 280px，最大 1280px
+   * @return array
+   * @throws Exception
+   */
+  public function getUnlimitedQRCode(string $scene, string $page = '', int $width = 430): array
+  {
+    $data = [
+      "scene" => $scene,
+      "page" => $page,
+      "width" => $width
+    ];
+    return $this->httpPost('https://api.weixin.qq.com/wxa/getwxacodeunlimit?{ACCESS_TOKEN}', $data);
   }
 
   /**
@@ -197,9 +210,21 @@ class MiniProgram
    * @return array
    * @throws Exception
    */
-  public function getFeedback(int $page, int $limit, int $type): array
+  public function getFeedback(int $page, int $limit, int $type = 0): array
   {
     return $this->httpGet('https://api.weixin.qq.com/wxaapi/feedback/list?{ACCESS_TOKEN}&page=' . $page . '&num=' . $limit . ($type > 0 ? '&type=' . $type : ''));
+  }
+
+  /**
+   * 获取用户反馈信息的图片
+   * @param int $record_id 用户反馈信息的 record_id, 可通过 getFeedback 获取
+   * @param string $media_id 图片的 mediaId
+   * @return array
+   * @throws Exception
+   */
+  public function getFeedbackMedia(int $record_id, string $media_id): array
+  {
+    return $this->httpGet('https://api.weixin.qq.com/cgi-bin/media/getfeedbackmedia?{ACCESS_TOKEN}&record_id=' . $record_id . '&media_id=' . $media_id);
   }
 
   /**
@@ -213,53 +238,103 @@ class MiniProgram
   }
 
   /**
-   * @param string $errmsg_keyword 错误关键字
-   * @param int $type 查询类型，1 为客户端， 2为服务直达
-   * @param string $client_version 客户端版本，可以通过 getVersionList 接口拉取, 不传或者传空代表所有版本
-   * @param int $start_time 开始时间
-   * @param int $end_time 结束时间
-   * @param int $start 分页起始值
-   * @param int $limit 一次拉取最大值
+   * 查询错误列表
+   * @param array $params
+   * @return array
    * @throws Exception
    */
-  public function getJsErrSearch(string $errmsg_keyword, int $type, string $client_version, int $start_time, int $end_time, int $start, int $limit)
+  public function getJsErrList(array $params): array
   {
     $data = [
-      "errmsg_keyword" => $errmsg_keyword,
-      "type" => $type,
-      "client_version" => $client_version,
-      "start_time" => $start_time,
-      "end_time" => $end_time,
-      "start" => $start,
-      "limit" => $limit
+      "keyword" => $params['keyword'] ?? '', // 从错误中搜索关键词，关键词过滤
+      "errType" => $params['errType'] ?? '0', //错误类型 "0"【全部】，"1"【业务代码错误】，"2"【插件错误】，"3"【系统框架错误】
+      "appVersion" => $params['appVersion'] ?? '0', //小程序版本 "0"代表全部， 例如：“2.0.18”
+      "startTime" => $params['startTime'] ?? date('Y-m-d', strtotime('-1 day')), // 开始时间
+      "endTime" => $params['endTime'] ?? date('Y-m-d'), //开始时间，格式 “xxxx-xx-xx”
+      "openid" => $params['openid'] ?? '', // 发生错误的用户 openId
+      "orderby" => $params['orderby'] ?? 'uv', // 排序字段 "uv", "pv" 二选一
+      "desc" => $params['desc'] ?? '1', // 排序规则 "1" orderby字段降序，"2" orderby字段升序
+      "offset" => $params['offset'] ?? '0', // 分页起始值
+      "limit" => $params['limit'] ?? '10' // 一次拉取最大值， 最大 30
     ];
-    $this->httpPost('https://api.weixin.qq.com/wxaapi/log/jserr_search?{ACCESS_TOKEN}', $data);
+    return $this->httpPost('https://api.weixin.qq.com/wxaapi/log/jserr_list?{ACCESS_TOKEN}', $data);
+  }
+
+  /**
+   * 查询JS错误详情
+   * @param array $params $data = [
+   * "startTime" => =>"2021-01-25", 开始时间， 格式 "xxxx-xx-xx"
+   * "endTime" => =>"2021-01-26", 结束时间，格式 “xxxx-xx-xx”
+   * "errorMsgMd5" => =>"f2fb4f8cd638466ad0e7607b01b7d0ca", 错误信息的md5
+   * "errorStackMd5" => =>"795a63b70ce5755c7103611d93077603", errorStack的Md5信息
+   * "appVersion" => =>"0", 小程序版本 "0"代表全部， 例如：“2.0.18”
+   * "sdkVersion" => =>"0", 基础库版本 "0"表示所有版本，例如 "2.14.1"
+   * "osName" => =>"2", 系统类型 "0"【全部】，"1" 【安卓】，"2" 【IOS】，"3"【其他】
+   * "clientVersion" => =>"0", 客户端版本 "0"表示所有版本， 例如 "7.0.22"
+   * "openid" => =>"", 发生错误的用户 openId
+   * "offset" => =>0, 分页起始值
+   * "limit" => =>10, 一次拉取最大值
+   * "desc" => =>"0" 排序规则 "0" 升序, "1" 降序
+   * ];
+   * @return array
+   * @throws Exception
+   */
+  public function getJsErrDetail(array $params): array
+  {
+    $data = [
+      "startTime" => $params[''] ?? date('Y-m-d'),
+      "endTime" => $params[''] ?? date('Y-m-d', strtotime('-1 day')),
+      "errorMsgMd5" => $params[''] ?? "",
+      "errorStackMd5" => $params[''] ?? "",
+      "appVersion" => $params[''] ?? "0",
+      "sdkVersion" => $params[''] ?? "0",
+      "osName" => $params[''] ?? "0",
+      "clientVersion" => $params[''] ?? "0",
+      "openid" => $params[''] ?? "",
+      "offset" => $params[''] ?? 0,
+      "limit" => $params[''] ?? 10,
+      "desc" => $params[''] ?? "0"
+    ];
+    return $this->httpPost('https://api.weixin.qq.com/wxaapi/log/jserr_detail?{ACCESS_TOKEN}', $data);
   }
 
   /**
    * 性能监控
-   * @param int $cost_time_type 可选值 1（启动总耗时）， 2（下载耗时），3（初次渲染耗时）
-   * @param int $default_start_time 查询开始时间戳
-   * @param int $default_end_time 查询结束时间戳
-   * @param string $device 系统平台，可选值 "@_all:"（全部），1（IOS）， 2（android）
-   * @param string $networktype 是否下载代码包，当 type 为 1 的时候才生效，可选值 "@_all:"（全部），1（是）， 2（否）
-   * @param string $scene 访问来源，当 type 为 1 或者 2 的时候才生效，通过 getSceneList 接口获取
-   * @param string $is_download_code 网络环境, 当 type 为 2 的时候才生效，可选值 "@_all:"，wifi, 4g, 3g, 2g
+   * @param array $params [
+   * "cost_time_type"=> 2, // 可选值 1（启动总耗时）， 2（下载耗时），3（初次渲染耗时）
+   * "default_start_time"=> 1572339403, // 查询开始时间戳
+   * "default_end_time"=> 1574931403, // 查询结束时间戳
+   * "device"=> "@_all", // 系统平台，可选值 "@_all:"（全部），1（IOS）， 2（android）
+   * "networktype"=> "@_all", // 是否下载代码包，当 type 为 1 的时候才生效，可选值 "@_all:"（全部），1（是）， 2（否）
+   * "scene"=> "@_all", // 访问来源，当 type 为 1 或者 2 的时候才生效，通过 getSceneList 接口获取
+   * "is_download_code"=> "@_all" // 网络环境, 当 type 为 2 的时候才生效，可选值 "@_all:"，wifi, 4g, 3g, 2g
+   * ];
    * @return array
    * @throws Exception
    */
-  public function getPerformance(int $cost_time_type, int $default_start_time, int $default_end_time, string $device, string $networktype, string $scene, string $is_download_code): array
+  public function getPerformance(array $params): array
   {
+
     $data = [
-      "cost_time_type" => $cost_time_type,
-      "default_start_time" => $default_start_time,
-      "default_end_time" => $default_end_time,
-      "device" => $device,
-      "networktype" => $networktype,
-      "scene" => $scene,
-      "is_download_code" => $is_download_code
+      "cost_time_type" => $params['cost_time_type'] ?? '1',
+      "default_start_time" => $params['default_start_time'] ?? strtotime('-1 day'),
+      "default_end_time" => $params['default_end_time'] ?? time(),
+      "device" => $params['device'] ?? '@_all',
+      "networktype" => $params['networktype'] ?? '@_all',
+      "scene" => $params['scene'] ?? '@_all',
+      "is_download_code" => $params['is_download_code'] ?? '@_all'
     ];
     return $this->httpPost('https://api.weixin.qq.com/wxaapi/log/get_performance?{ACCESS_TOKEN}', $data);
+  }
+
+  /**
+   * 查询小程序域名配置信息
+   * @return array
+   * @throws Exception
+   */
+  public function getDomainInfo(): array
+  {
+    return $this->httpPost('https://api.weixin.qq.com/wxa/getwxadevinfo?{ACCESS_TOKEN}', ["action" => "getserverdomain"]);
   }
 
   /**
@@ -288,7 +363,7 @@ class MiniProgram
    * @return array
    * @throws Exception
    */
-  public function realtimelogSearch(array $data): array
+  public function realtimeLogSearch(array $data): array
   {
     return $this->httpGet('https://api.weixin.qq.com/wxaapi/userlog/userlog_search?{ACCESS_TOKEN}&' . http_build_query($data));
   }

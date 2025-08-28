@@ -16,11 +16,13 @@ use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Cache\Psr16Cache;
 use Wanphp\Libray\Slim\RedisCacheFactory;
 use Wanphp\Libray\Slim\Setting;
+use Wanphp\Libray\Weixin\Traits\ImageOcrTrait;
 use Wanphp\Libray\Weixin\Traits\OfficialAccountTrait;
 
 class WeChatBase
 {
   use OfficialAccountTrait;
+  use ImageOcrTrait;
 
   protected string $appid;
   protected string $app_secret;
